@@ -3,7 +3,11 @@ import type {
   DB, Team, Venue, Player, Match, MatchEvent, User, NewsItem, Highlight, Position, Privilege, ApprovalRequest, Notice,
 } from '../types';
 
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
+
+/** Season shape: 12 clubs → 11 league matchdays. Matchdays up to LAST_PLAYED are already played. */
+export const LAST_PLAYED = 8;
+const NEXT_ROUND = LAST_PLAYED + 1;
 
 /** Deterministic PRNG so the seeded season is identical for every visitor. */
 function mulberry32(seed: number) {
@@ -35,6 +39,8 @@ const venues: Venue[] = [
   { id: 'v-harbour', name: 'Harbour Ground', city: 'Harbour', address: '14 Quay Street, Harbour', capacity: 2200, surface: 'Natural grass', parking: 'Quayside parking (paid on weekdays)', transit: 'Ferry pier · 5 min walk' },
   { id: 'v-hillside', name: 'Hillside Sports Complex', city: 'Hillside', address: '230 Ridge Lane, Hillside', capacity: 1500, surface: 'Artificial turf (4G)', parking: 'Free parking at the complex', transit: 'Bus 44 · Sports Complex stop' },
   { id: 'v-riverside', name: 'Riverside Park Pitch', city: 'Riverside', address: 'Riverside Park, Bridge Road', capacity: 1200, surface: 'Natural grass', parking: 'Street parking on Bridge Road', transit: 'Tram T1 · Riverside Park' },
+  { id: 'v-seaside', name: 'Seaside Ground', city: 'Seaside', address: '3 Promenade Walk, Seaside', capacity: 1800, surface: 'Natural grass', parking: 'Promenade car park (free after 18:00)', transit: 'Coast bus 7 · Promenade stop' },
+  { id: 'v-valley', name: 'Valley Sports Park', city: 'Valley', address: '55 Orchard Road, Valley', capacity: 2600, surface: 'Hybrid grass', parking: 'Free parking, 300 spaces', transit: 'Bus 31 · Sports Park' },
   { id: 'v-north', name: 'Northgate Arena', city: 'Northgate', address: '7 Gate Avenue, Northgate', capacity: 3000, surface: 'Hybrid grass', parking: 'North and west lots, 400 spaces', transit: 'Metro M1 · Northgate' },
 ];
 
@@ -46,6 +52,10 @@ const teams: Team[] = [
   { id: 't-north', name: 'Northgate Rovers', short: 'NOR', city: 'Northgate', colors: [C.blueDeep, C.red], founded: 2012, coach: 'Marco Ruiz', homeVenueId: 'v-north', bio: 'Ambitious and well organised, Northgate have built the strongest squad outside the old town.' },
   { id: 't-market', name: 'Market Street SC', short: 'MKT', city: 'Old Town', colors: [C.turqDeep, C.white], founded: 2010, coach: 'Hassan Farouk', homeVenueId: 'v-central', bio: 'Shop owners and market traders. They share Central Stadium with Old Town — and the fiercest derby of the tour.' },
   { id: 't-lighthouse', name: 'Lighthouse FC', short: 'LGH', city: 'Harbour', colors: [C.redDeep, C.turq], founded: 2018, coach: 'Amina Diallo', homeVenueId: 'v-harbour', bio: 'The newest club on the tour. Quick wingers, fearless full-backs and the loudest supporters on the coast road.' },
+  { id: 't-seaside', name: 'Seaside Wanderers', short: 'SEA', city: 'Seaside', colors: [C.turq, C.red], founded: 2013, coach: 'Lucas Moreau', homeVenueId: 'v-seaside', bio: 'Sea breeze and fast counter-attacks. The Wanderers train on the beach every Tuesday — and it shows in the last ten minutes.' },
+  { id: 't-valley', name: 'Valley United', short: 'VAL', city: 'Valley', colors: [C.blueDeep, C.turq], founded: 2015, coach: 'Sofia Rahman', homeVenueId: 'v-valley', bio: 'Built by the orchard families of the valley. Tough to beat at home and proud of the best youth turnout on the tour.' },
+  { id: 't-tower', name: 'Tower Hill SC', short: 'TWR', city: 'Hillside', colors: [C.red, C.blueDeep], founded: 2017, coach: 'Mehmet Kılıç', homeVenueId: 'v-hillside', bio: 'Hillside’s second club, named after the old water tower on the ridge. Direct, physical and never short of goals.' },
+  { id: 't-bridge', name: 'Bridge End FC', short: 'BRG', city: 'Riverside', colors: [C.blue2, C.red], founded: 2019, coach: 'Daniel Okafor', homeVenueId: 'v-riverside', bio: 'From the streets by the old bridge. The youngest squad on the tour, with a pressing game to match.' },
   { id: 't-garden', name: 'Garden District', short: 'GDN', city: 'Northgate', colors: [C.white, C.red], founded: 2008, coach: 'Can Demir', homeVenueId: 'v-north', bio: 'Founders of the tour. Garden District carry its history — and a famous red sash.' },
 ];
 
@@ -89,7 +99,7 @@ function buildPlayers(rng: () => number, seasonStart: Date): Player[] {
   return players;
 }
 
-/** Circle-method round robin: 8 teams → 7 rounds of 4 matches. */
+/** Circle-method round robin: 12 teams → 11 rounds of 6 matches. */
 function roundRobin(ids: string[]): [string, string][][] {
   const arr = [...ids];
   const rounds: [string, string][][] = [];
@@ -115,7 +125,7 @@ function generateEvents(rng: () => number, m: Match, players: Player[]): { event
     return r < 0.25 ? 0 : r < 0.55 ? 1 : r < 0.8 ? 2 : r < 0.93 ? 3 : 4;
   };
   const sides = [m.homeId!, m.awayId!];
-  const strength: Record<string, number> = { 't-old': 1.15, 't-north': 1.1, 't-harbour': 1.0, 't-hillside': 1.0, 't-garden': 0.95, 't-market': 0.9, 't-riverside': 0.9, 't-lighthouse': 0.85 };
+  const strength: Record<string, number> = { 't-old': 1.15, 't-north': 1.1, 't-harbour': 1.0, 't-hillside': 1.0, 't-seaside': 1.0, 't-garden': 0.95, 't-valley': 0.95, 't-market': 0.9, 't-riverside': 0.9, 't-tower': 0.9, 't-lighthouse': 0.85, 't-bridge': 0.85 };
   sides.forEach((teamId, idx) => {
     const squad = players.filter((p) => p.teamId === teamId);
     const weighted: Player[] = [];
@@ -174,19 +184,20 @@ function nextMatchday(now: Date): Date {
 
 export function createSeed(now = new Date()): DB {
   const rng = mulberry32(20261105);
-  const round6 = nextMatchday(now);
-  const roundDate = (round: number) => new Date(round6.getTime() + (round - 6) * 7 * 864e5);
+  const nextDay = nextMatchday(now);
+  const roundDate = (round: number) => new Date(nextDay.getTime() + (round - NEXT_ROUND) * 7 * 864e5);
   const seasonStart = roundDate(1);
   const players = buildPlayers(rng, seasonStart);
   const rounds = roundRobin(teams.map((t) => t.id));
   const matches: Match[] = [];
-  const slots = [15, 17, 19, 21];
+  // Six matches per round: three on Saturday, three on Sunday — every kickoff slot is unique, so shared grounds never clash.
+  const slots = [14, 16, 18, 14, 16, 18];
 
   rounds.forEach((pairs, r) => {
     const round = r + 1;
     pairs.forEach(([homeId, awayId], i) => {
       const d = roundDate(round);
-      if (i >= 2) d.setDate(d.getDate() + 1); // two matches Saturday, two Sunday
+      if (i >= 3) d.setDate(d.getDate() + 1);
       d.setHours(slots[i], 0, 0, 0);
       const home = teams.find((t) => t.id === homeId)!;
       const m: Match = {
@@ -197,11 +208,11 @@ export function createSeed(now = new Date()): DB {
         awayId,
         kickoff: d.toISOString(),
         venueId: home.homeVenueId,
-        status: round <= 5 ? 'finished' : 'scheduled',
+        status: round <= LAST_PLAYED ? 'finished' : 'scheduled',
         events: [],
         referee: pick(rng, REFEREES),
       };
-      if (round <= 5) {
+      if (round <= LAST_PLAYED) {
         const { events, stats } = generateEvents(rng, m, players);
         m.events = events;
         m.stats = stats;
@@ -213,22 +224,23 @@ export function createSeed(now = new Date()): DB {
   });
 
   // Final Four — semi-finals and the final at Central Stadium.
-  const sf = roundDate(8);
+  const lastLeague = rounds.length;
+  const sf = roundDate(lastLeague + 1);
   const sf1 = new Date(sf); sf1.setHours(18, 0, 0, 0);
   const sf2 = new Date(sf); sf2.setDate(sf2.getDate() + 1); sf2.setHours(18, 0, 0, 0);
-  const fin = roundDate(9); fin.setHours(20, 0, 0, 0);
+  const fin = roundDate(lastLeague + 2); fin.setHours(20, 0, 0, 0);
   matches.push(
-    { id: 'm-sf-1', stage: 'semi', round: 8, homeId: null, awayId: null, homeLabel: '1st place', awayLabel: '4th place', kickoff: sf1.toISOString(), venueId: 'v-north', status: 'scheduled', events: [], referee: 'A. Kaplan' },
-    { id: 'm-sf-2', stage: 'semi', round: 8, homeId: null, awayId: null, homeLabel: '2nd place', awayLabel: '3rd place', kickoff: sf2.toISOString(), venueId: 'v-harbour', status: 'scheduled', events: [], referee: 'J. Ortega' },
-    { id: 'm-final', stage: 'final', round: 9, homeId: null, awayId: null, homeLabel: 'Winner SF1', awayLabel: 'Winner SF2', kickoff: fin.toISOString(), venueId: 'v-central', status: 'scheduled', events: [], referee: 'M. Saad' },
+    { id: 'm-sf-1', stage: 'semi', round: lastLeague + 1, homeId: null, awayId: null, homeLabel: '1st place', awayLabel: '4th place', kickoff: sf1.toISOString(), venueId: 'v-north', status: 'scheduled', events: [], referee: 'A. Kaplan' },
+    { id: 'm-sf-2', stage: 'semi', round: lastLeague + 1, homeId: null, awayId: null, homeLabel: '2nd place', awayLabel: '3rd place', kickoff: sf2.toISOString(), venueId: 'v-harbour', status: 'scheduled', events: [], referee: 'J. Ortega' },
+    { id: 'm-final', stage: 'final', round: lastLeague + 2, homeId: null, awayId: null, homeLabel: 'Winner SF1', awayLabel: 'Winner SF2', kickoff: fin.toISOString(), venueId: 'v-central', status: 'scheduled', events: [], referee: 'M. Saad' },
   );
 
   const created = new Date(seasonStart.getTime() - 30 * 864e5).toISOString();
   const cap = (teamId: string, idx: number) => players.filter((p) => p.teamId === teamId)[idx];
   const users: User[] = [
     { id: 'u-god', name: 'Omar Khalid', email: 'admin@kooratour.com', role: 'god', privileges: [], createdAt: created },
-    { id: 'u-host1', name: 'Leyla Arslan', email: 'leyla@kooratour.com', role: 'host', privileges: [...ROLE_PRESETS.host], venueIds: ['v-central', 'v-north'], createdAt: created },
-    { id: 'u-host2', name: 'Daniel Costa', email: 'daniel@kooratour.com', role: 'host', privileges: ['enter_results'], venueIds: ['v-harbour', 'v-hillside', 'v-riverside'], createdAt: created },
+    { id: 'u-host1', name: 'Leyla Arslan', email: 'leyla@kooratour.com', role: 'host', privileges: [...ROLE_PRESETS.host], venueIds: ['v-central', 'v-north', 'v-seaside'], createdAt: created },
+    { id: 'u-host2', name: 'Daniel Costa', email: 'daniel@kooratour.com', role: 'host', privileges: ['enter_results'], venueIds: ['v-harbour', 'v-hillside', 'v-riverside', 'v-valley'], createdAt: created },
     { id: 'u-org1', name: 'Nour Hamdi', email: 'nour@kooratour.com', role: 'organizer', privileges: [...ROLE_PRESETS.organizer, 'manage_teams'], createdAt: created },
     { id: 'u-org2', name: 'Bora Kaya', email: 'bora@kooratour.com', role: 'organizer', privileges: ['publish_news', 'manage_highlights'], createdAt: created },
   ];
@@ -243,10 +255,10 @@ export function createSeed(now = new Date()): DB {
   users.push({ id: 'u-fan', name: 'Sara Fan', email: 'sara@fans.com', role: 'fan', privileges: [], favoriteTeamId: 't-hillside', createdAt: created });
 
   const day = (offset: number) => new Date(now.getTime() - offset * 864e5).toISOString();
-  const lastRound = matches.filter((m) => m.round === 5);
+  const lastRound = matches.filter((m) => m.round === LAST_PLAYED);
   const news: NewsItem[] = [
-    { id: 'n-1', title: 'Matchday 6 preview: the title race tightens', summary: 'Four fixtures, a city derby, and a top-of-the-table clash that could decide who hosts the semi-final.', body: 'With two league rounds left before the Final Four, every point counts. Old Town FC and Northgate Rovers are separated by the slimmest of margins, while Garden District and Hillside Athletic are fighting for the last semi-final spot.\n\nOur hosts confirm all five grounds are ready. Entry is free for under-12s at every venue this weekend.', category: 'Preview', date: day(1), teamIds: ['t-old', 't-north'], authorId: 'u-org1' },
-    { id: 'n-2', title: `Matchday 5 report: ${lastRound.length} matches, plenty of drama`, summary: 'Late winners, a red card and a goalkeeper masterclass — here is everything you missed.', body: 'Matchday 5 delivered again. Full scores, scorers and stats are in the Matches section, and every goal is in the Highlights hub.\n\nThe Player of the Match vote stays open after the final whistle — make your pick on each match page.', category: 'Report', date: day(5), teamIds: [], authorId: 'u-org1' },
+    { id: 'n-1', title: `Matchday ${NEXT_ROUND} preview: the title race tightens`, summary: 'Six fixtures, a city derby, and a top-of-the-table clash that could decide who hosts the semi-final.', body: `With three league rounds left before the Final Four, every point counts. Old Town FC and Northgate Rovers are separated by the slimmest of margins, while Garden District and Hillside Athletic are fighting for the last semi-final spot.\n\nOur hosts confirm all seven grounds are ready. Entry is free for under-12s at every venue this weekend.`, category: 'Preview', date: day(1), teamIds: ['t-old', 't-north'], authorId: 'u-org1' },
+    { id: 'n-2', title: `Matchday ${LAST_PLAYED} report: ${lastRound.length} matches, plenty of drama`, summary: 'Late winners, a red card and a goalkeeper masterclass — here is everything you missed.', body: `Matchday ${LAST_PLAYED} delivered again. Full scores, scorers and stats are in the Matches section, and every goal is in the Highlights hub.\n\nThe Player of the Match vote stays open after the final whistle — make your pick on each match page.`, category: 'Report', date: day(5), teamIds: [], authorId: 'u-org1' },
     { id: 'n-3', title: 'Final Four venues confirmed', summary: 'Northgate Arena and Harbour Ground host the semi-finals; Central Stadium stages the Final.', body: 'The God Admin has approved the knockout venues. 1st place faces 4th at Northgate Arena, while 2nd meets 3rd at Harbour Ground the following evening. The Final is under the lights at Central Stadium in the old town.', category: 'Announcement', date: day(9), teamIds: [], authorId: 'u-god' },
     { id: 'n-4', title: 'Riverside FC: the park club that keeps producing', summary: 'Half the Riverside squad grew up on the same park pitch. We spent an evening at training.', body: 'At Riverside Park the philosophy is simple: trust the neighbourhood. Coach Karim Haddad explains how the club finds players on its own streets — and why other clubs on the tour are now copying the model.', category: 'Feature', date: day(12), teamIds: ['t-riverside'], authorId: 'u-org2' },
     { id: 'n-5', title: '"We play for the district" — Garden District captain on founding the tour', summary: 'The captain talks community, pressure, and the famous red sash.', body: 'Garden District were there when the tour kicked off, and their captain feels it every week. "When you put on the sash you represent your street, your family, your neighbours," he told us before training.', category: 'Interview', date: day(16), teamIds: ['t-garden'], authorId: 'u-org2' },
@@ -265,13 +277,13 @@ export function createSeed(now = new Date()): DB {
   highlights.push({ id: 'h-saves', title: 'Top 10 saves of the league phase so far', kind: 'Saves', duration: '6:12', date: day(3), views: 88231, addedBy: 'u-org2' });
   highlights.push({ id: 'h-skills', title: 'Skills & nutmegs: Matchday 1–5', kind: 'Skills', duration: '4:48', date: day(2), views: 64010, addedBy: 'u-org2' });
 
-  const r6 = matches.filter((m) => m.round === 6);
+  const rNext = matches.filter((m) => m.round === NEXT_ROUND);
   const requests: ApprovalRequest[] = [
     {
-      id: 'r-seed-1', type: 'reschedule', status: 'pending', createdBy: `u-cap-${teams.find((t) => t.id === r6[1].homeId)!.short.toLowerCase()}`,
-      createdAt: day(1), teamId: r6[1].homeId!, matchId: r6[1].id,
+      id: 'r-seed-1', type: 'reschedule', status: 'pending', createdBy: `u-cap-${teams.find((t) => t.id === rNext[1].homeId)!.short.toLowerCase()}`,
+      createdAt: day(1), teamId: rNext[1].homeId!, matchId: rNext[1].id,
       reason: 'Several of our players work Saturday shifts until 16:00. Requesting a 2-hour delay so the full squad can make kickoff.',
-      payload: { kind: 'delay', originalKickoff: r6[1].kickoff, originalVenueId: r6[1].venueId, proposedKickoff: new Date(new Date(r6[1].kickoff).getTime() + 2 * 36e5).toISOString() },
+      payload: { kind: 'delay', originalKickoff: rNext[1].kickoff, originalVenueId: rNext[1].venueId, proposedKickoff: new Date(new Date(rNext[1].kickoff).getTime() + 2 * 36e5).toISOString() },
       recommendations: [{ userId: 'u-org1', verdict: 'support', note: 'Venue is free until 23:00. No broadcast clash.', at: day(0.5) }],
     },
     {
@@ -292,7 +304,7 @@ export function createSeed(now = new Date()): DB {
     settings: { tournamentName: 'Koora Tour', season: `${seasonStart.getFullYear()}/${String(seasonStart.getFullYear() + 1).slice(-2)}`, rosterLocked: false, maxSquadSize: 20, minRescheduleNoticeHours: 48 },
     users, teams, players, venues, matches, requests, news, highlights,
     audit: [
-      { id: 'a-1', at: created, actorId: 'u-god', action: 'Season created', detail: 'League phase: 8 teams, 7 rounds. Final Four format.' },
+      { id: 'a-1', at: created, actorId: 'u-god', action: 'Season created', detail: 'League phase: 12 teams, 11 rounds. Final Four format.' },
       { id: 'a-2', at: created, actorId: 'u-god', action: 'Roles assigned', detail: 'Hosts: Leyla Arslan, Daniel Costa. Organizers: Nour Hamdi, Bora Kaya.' },
     ],
     notices,

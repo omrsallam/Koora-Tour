@@ -12,7 +12,7 @@ export default function Teams() {
   const table = standings(db);
   return (
     <>
-      <PageHead kicker="The clubs" title="Teams" sub="Eight clubs. One trophy. Pick your side and follow every step." />
+      <PageHead kicker="The clubs" title="Teams" sub="Twelve clubs. One trophy. Pick your side and follow every step." />
       <section className="section">
         <div className="container grid grid-4">
           {db.teams.map((t) => {

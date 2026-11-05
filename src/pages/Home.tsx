@@ -3,6 +3,7 @@ import { useStore, useLookup, dashboardPath } from '../store/store';
 import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8 } from '../components/ui';
 import { C, G } from '../theme';
 import Skyline from '../components/Skyline';
+import AutoRail from '../components/AutoRail';
 import type { Highlight } from '../types';
 import { score } from '../data/derive';
 import { compact, timeAgo } from '../format';
@@ -76,13 +77,13 @@ function YourClub() {
 function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
   const { db } = useStore();
   const L = useLookup();
-  const finished = db.matches.filter((m) => m.status === 'finished').sort((a, b) => b.kickoff.localeCompare(a.kickoff)).slice(0, 10);
+  const finished = db.matches.filter((m) => m.status === 'finished').sort((a, b) => b.kickoff.localeCompare(a.kickoff)).slice(0, 12);
   const featured = db.highlights[0];
   const fm = featured && db.matches.find((m) => m.id === featured.matchId);
   return (
     <div className="stories-section">
       <div className="container">
-        <div className="stories" role="list" aria-label="Latest results">
+        <AutoRail label="Latest results" tone="dark" interval={2600}>
           {finished.map((m) => {
             const [h, a] = score(m);
             const hl = db.highlights.find((x) => x.matchId === m.id);
@@ -95,10 +96,10 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
               </>
             );
             return hl
-              ? <button key={m.id} role="listitem" className="story" onClick={() => onOpen(hl)} aria-label={`Watch ${label} highlights`}>{inner}</button>
-              : <Link key={m.id} role="listitem" className="story" to={`/matches/${m.id}`}>{inner}</Link>;
+              ? <button key={m.id} className="story" onClick={() => onOpen(hl)} aria-label={`Watch ${label} highlights`}>{inner}</button>
+              : <Link key={m.id} className="story" to={`/matches/${m.id}`}>{inner}</Link>;
           })}
-        </div>
+        </AutoRail>
         <div className="feature-grid">
           {featured && (
             <button className="feature-card" onClick={() => onOpen(featured)}>
@@ -162,7 +163,7 @@ export default function Home() {
           <div>
             <div className="kicker">Season {db.settings.season} · Road to the Final</div>
             <h1>Our city.<span>Our cup.</span></h1>
-            <p className="lead">Eight neighbourhood clubs, five local grounds, one trophy. Live scores, the table, top scorers and highlights from the {db.settings.tournamentName} — all in one hub. {final && <>The Final is on <b style={{ color: '#fff' }}>{fmtLong(final.kickoff)}</b> at {L.venue(final.venueId)?.name}.</>}</p>
+            <p className="lead">Twelve neighbourhood clubs, seven local grounds, one trophy. Live scores, the table, top scorers and highlights from the {db.settings.tournamentName} — all in one hub. {final && <>The Final is on <b style={{ color: '#fff' }}>{fmtLong(final.kickoff)}</b> at {L.venue(final.venueId)?.name}.</>}</p>
             <div className="hero-cta">
               <Link to="/matches" className="btn btn-gold">Fixtures & results</Link>
               {user ? <Link to={dashboardPath(user)} className="btn btn-ghost-light">My dashboard</Link> : <Link to="/login" className="btn btn-ghost-light">Join as a fan</Link>}
@@ -194,11 +195,11 @@ export default function Home() {
       <section className="section">
         <div className="container">
           <SectionHead kicker="Matchday centre" title={lastRound ? `Matchday ${lastRound} results` : 'Results'} action={<Link to="/matches" className="btn btn-ghost btn-sm">All matches</Link>} />
-          <div className="match-grid">{results.map((m) => <MatchCard key={m.id} m={m} />)}</div>
+          <AutoRail label={`Matchday ${lastRound} results`} itemWidth={272}>{results.map((m) => <MatchCard key={m.id} m={m} />)}</AutoRail>
           {nextRound.length > 0 && (
             <>
               <h3 style={{ margin: '34px 0 16px' }}>Coming up · Matchday {lastRound + 1}</h3>
-              <div className="match-grid">{nextRound.map((m) => <MatchCard key={m.id} m={m} />)}</div>
+              <AutoRail label={`Matchday ${lastRound + 1} fixtures`} itemWidth={272} interval={3600}>{nextRound.map((m) => <MatchCard key={m.id} m={m} />)}</AutoRail>
             </>
           )}
         </div>
@@ -224,7 +225,7 @@ export default function Home() {
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container">
           <SectionHead kicker="Watch" title="Latest highlights" action={<Link to="/highlights" className="btn btn-ghost btn-sm">All videos</Link>} />
-          <div className="video-grid">{db.highlights.slice(1, 5).map((h) => <HighlightCard key={h.id} h={h} onOpen={open} />)}</div>
+          <AutoRail label="Latest highlights" itemWidth={290} interval={3400}>{db.highlights.slice(1, 9).map((h) => <HighlightCard key={h.id} h={h} onOpen={open} />)}</AutoRail>
         </div>
       </section>
 
