@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useStore, useLookup, dashboardPath } from '../store/store';
 import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8 } from '../components/ui';
 import { C, G } from '../theme';
+import Skyline from '../components/Skyline';
 import type { Highlight } from '../types';
 import { score } from '../data/derive';
 import { compact, timeAgo } from '../format';
@@ -10,15 +11,6 @@ import { standings, teamMatches } from '../data/derive';
 import { fmtDateTime, fmtLong, roundLabel } from '../format';
 import { HighlightCard, useHighlightPlayer } from './Highlights';
 import { NewsCard } from './News';
-
-function Skyline() {
-  // Stylised skyline of domes and minarets — a nod to Istanbul.
-  return (
-    <svg className="hero-skyline" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true">
-      <path fill={C.blueNight} d="M0 90V70h60v-8h20v8h40V52c0-14 22-24 40-24s40 10 40 24v18h18V20l4-14 4 14v50h30V58c0-8 12-14 22-14s22 6 22 14v12h60V40c0-22 34-36 60-36s60 14 60 36v30h14V14l4-12 4 12v56h40V60c0-10 14-16 26-16s26 6 26 16v10h70v-6h30v6h44V48c0-16 26-28 46-28s46 12 46 28v22h16V22l4-14 4 14v48h60V62h40v8h70V54c0-10 16-18 30-18s30 8 30 18v16h60v20z" />
-    </svg>
-  );
-}
 
 function YourClub() {
   const { db, user } = useStore();
