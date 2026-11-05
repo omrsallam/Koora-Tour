@@ -1,8 +1,9 @@
+import { C } from '../theme';
 import type {
   DB, Team, Venue, Player, Match, MatchEvent, User, NewsItem, Highlight, Position, Privilege, ApprovalRequest, Notice,
 } from '../types';
 
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 /** Deterministic PRNG so the seeded season is identical for every visitor. */
 function mulberry32(seed: number) {
@@ -30,22 +31,22 @@ export const ROLE_PRESETS: Record<'host' | 'organizer', Privilege[]> = {
 };
 
 const venues: Venue[] = [
-  { id: 'v-crescent', name: 'Crescent Arena', city: 'Crescent City', address: '1 Golden Horn Avenue, Crescent City', capacity: 42000, surface: 'Hybrid grass', parking: 'Lots P1–P4 open 3h before kickoff', transit: 'Metro M2 · Arena station (3 min walk)' },
-  { id: 'v-atlas', name: 'Atlas Park', city: 'Atlas', address: '88 Mountain Road, Atlas', capacity: 28000, surface: 'Natural grass', parking: 'North car park, 1,200 spaces', transit: 'Tram T1 · Atlas Park stop' },
-  { id: 'v-marina', name: 'Marina Ground', city: 'Marina Bay', address: '14 Harbour Front, Marina Bay', capacity: 19500, surface: 'Natural grass', parking: 'Harbour garage (paid)', transit: 'Ferry pier 2 · 6 min walk' },
-  { id: 'v-cedar', name: 'Cedar Stadium', city: 'Cedar Hills', address: '230 Forest Lane, Cedar Hills', capacity: 22000, surface: 'Hybrid grass', parking: 'Free parking on matchday', transit: 'Bus 44, 46 · Cedar Stadium' },
-  { id: 'v-oasis', name: 'Oasis Dome', city: 'Royal Oasis', address: '7 Palm Boulevard, Royal Oasis', capacity: 35000, surface: 'Natural grass (climate-controlled)', parking: 'VIP & public parking, west gate', transit: 'Metro M1 · Oasis Dome' },
+  { id: 'v-central', name: 'Central Stadium', city: 'Old Town', address: '1 Stadium Road, Old Town', capacity: 4500, surface: 'Natural grass', parking: 'Municipal car park behind the main stand', transit: 'Bus 12, 15 · Stadium Road stop' },
+  { id: 'v-harbour', name: 'Harbour Ground', city: 'Harbour', address: '14 Quay Street, Harbour', capacity: 2200, surface: 'Natural grass', parking: 'Quayside parking (paid on weekdays)', transit: 'Ferry pier · 5 min walk' },
+  { id: 'v-hillside', name: 'Hillside Sports Complex', city: 'Hillside', address: '230 Ridge Lane, Hillside', capacity: 1500, surface: 'Artificial turf (4G)', parking: 'Free parking at the complex', transit: 'Bus 44 · Sports Complex stop' },
+  { id: 'v-riverside', name: 'Riverside Park Pitch', city: 'Riverside', address: 'Riverside Park, Bridge Road', capacity: 1200, surface: 'Natural grass', parking: 'Street parking on Bridge Road', transit: 'Tram T1 · Riverside Park' },
+  { id: 'v-north', name: 'Northgate Arena', city: 'Northgate', address: '7 Gate Avenue, Northgate', capacity: 3000, surface: 'Hybrid grass', parking: 'North and west lots, 400 spaces', transit: 'Metro M1 · Northgate' },
 ];
 
 const teams: Team[] = [
-  { id: 't-crescent', name: 'Crescent City FC', short: 'CRE', city: 'Crescent City', colors: ['#c8102e', '#f2b33d'], founded: 1921, coach: 'Selim Aydın', homeVenueId: 'v-crescent', bio: 'The most decorated club on the tour, famous for its red-and-gold wall of noise at Crescent Arena.' },
-  { id: 't-atlas', name: 'Atlas United', short: 'ATL', city: 'Atlas', colors: ['#1f4fd1', '#ffffff'], founded: 1934, coach: 'Youssef Benali', homeVenueId: 'v-atlas', bio: 'Mountain-born grit. Atlas press high, run hard and never stop until the final whistle.' },
-  { id: 't-marina', name: 'Marina Athletic', short: 'MAR', city: 'Marina Bay', colors: ['#1fb5b0', '#0a1633'], founded: 1952, coach: 'Elena Petrova', homeVenueId: 'v-marina', bio: 'A harbour club with a passing philosophy — patient, precise and dangerous on the break.' },
-  { id: 't-cedar', name: 'Cedar FC', short: 'CED', city: 'Cedar Hills', colors: ['#1d7a3e', '#f4f1ea'], founded: 1946, coach: 'Karim Haddad', homeVenueId: 'v-cedar', bio: 'Academy-first club that gives youth a stage. Half the squad came through the Cedar pathway.' },
-  { id: 't-oasis', name: 'Royal Oasis', short: 'ROY', city: 'Royal Oasis', colors: ['#6b2fb3', '#f2b33d'], founded: 1968, coach: 'Marco Ruiz', homeVenueId: 'v-oasis', bio: 'Ambitious, star-studded and building a dynasty under the Oasis Dome.' },
-  { id: 't-nile', name: 'Nile Falcons', short: 'NIL', city: 'Crescent City', colors: ['#0a1633', '#1fb5b0'], founded: 1930, coach: 'Hassan Farouk', homeVenueId: 'v-crescent', bio: 'The other side of the city. Falcons share Crescent Arena and a fierce derby with CRE.' },
-  { id: 't-sahara', name: 'Sahara Stars', short: 'SAH', city: 'Atlas', colors: ['#e87722', '#0a1633'], founded: 1975, coach: 'Amina Diallo', homeVenueId: 'v-atlas', bio: 'Quick wingers, fearless fullbacks and the loudest away end on the tour.' },
-  { id: 't-galata', name: 'Galata Rovers', short: 'GAL', city: 'Marina Bay', colors: ['#f2b33d', '#1a1a1a'], founded: 1909, coach: 'Can Demir', homeVenueId: 'v-marina', bio: 'The oldest club on the tour. Tradition, tenacity and a famous yellow-and-black stripe.' },
+  { id: 't-old', name: 'Old Town FC', short: 'OLD', city: 'Old Town', colors: [C.red, C.white], founded: 2009, coach: 'Selim Aydın', homeVenueId: 'v-central', bio: 'The reigning champions from the historic centre. Old Town fill Central Stadium every match day with a wall of red.' },
+  { id: 't-harbour', name: 'Harbour United', short: 'HAR', city: 'Harbour', colors: [C.blue2, C.white], founded: 2011, coach: 'Youssef Benali', homeVenueId: 'v-harbour', bio: 'Fishermen, dock workers and their kids — Harbour press high and never stop running.' },
+  { id: 't-hillside', name: 'Hillside Athletic', short: 'HIL', city: 'Hillside', colors: [C.turq, C.blueDeep], founded: 2014, coach: 'Elena Petrova', homeVenueId: 'v-hillside', bio: 'A passing side built on the 4G pitch of the Hillside complex — patient, precise and dangerous on the break.' },
+  { id: 't-riverside', name: 'Riverside FC', short: 'RIV', city: 'Riverside', colors: [C.white, C.turq], founded: 2016, coach: 'Karim Haddad', homeVenueId: 'v-riverside', bio: 'The neighbourhood academy club. Half the squad grew up kicking a ball in Riverside Park.' },
+  { id: 't-north', name: 'Northgate Rovers', short: 'NOR', city: 'Northgate', colors: [C.blueDeep, C.red], founded: 2012, coach: 'Marco Ruiz', homeVenueId: 'v-north', bio: 'Ambitious and well organised, Northgate have built the strongest squad outside the old town.' },
+  { id: 't-market', name: 'Market Street SC', short: 'MKT', city: 'Old Town', colors: [C.turqDeep, C.white], founded: 2010, coach: 'Hassan Farouk', homeVenueId: 'v-central', bio: 'Shop owners and market traders. They share Central Stadium with Old Town — and the fiercest derby of the tour.' },
+  { id: 't-lighthouse', name: 'Lighthouse FC', short: 'LGH', city: 'Harbour', colors: [C.redDeep, C.turq], founded: 2018, coach: 'Amina Diallo', homeVenueId: 'v-harbour', bio: 'The newest club on the tour. Quick wingers, fearless full-backs and the loudest supporters on the coast road.' },
+  { id: 't-garden', name: 'Garden District', short: 'GDN', city: 'Northgate', colors: [C.white, C.red], founded: 2008, coach: 'Can Demir', homeVenueId: 'v-north', bio: 'Founders of the tour. Garden District carry its history — and a famous red sash.' },
 ];
 
 const FIRST = ['Omar', 'Emre', 'Luca', 'Yusuf', 'Karim', 'Mateo', 'Adam', 'Ali', 'Hakan', 'Rami', 'Diego', 'Noah', 'Sami', 'Kerem', 'Ilyas', 'Malik', 'Tariq', 'Jonas', 'Arda', 'Bilal', 'Nico', 'Zaid', 'Leo', 'Mert', 'Hamza', 'Theo', 'Idris', 'Kenan', 'Faris', 'Rayan', 'Samuel', 'Burak', 'Ayoub', 'Marco', 'Anas', 'Yassin'];
@@ -114,7 +115,7 @@ function generateEvents(rng: () => number, m: Match, players: Player[]): { event
     return r < 0.25 ? 0 : r < 0.55 ? 1 : r < 0.8 ? 2 : r < 0.93 ? 3 : 4;
   };
   const sides = [m.homeId!, m.awayId!];
-  const strength: Record<string, number> = { 't-crescent': 1.15, 't-oasis': 1.1, 't-atlas': 1.0, 't-marina': 1.0, 't-galata': 0.95, 't-nile': 0.9, 't-cedar': 0.9, 't-sahara': 0.85 };
+  const strength: Record<string, number> = { 't-old': 1.15, 't-north': 1.1, 't-harbour': 1.0, 't-hillside': 1.0, 't-garden': 0.95, 't-market': 0.9, 't-riverside': 0.9, 't-lighthouse': 0.85 };
   sides.forEach((teamId, idx) => {
     const squad = players.filter((p) => p.teamId === teamId);
     const weighted: Player[] = [];
@@ -211,23 +212,23 @@ export function createSeed(now = new Date()): DB {
     });
   });
 
-  // Final Four — semi-finals and the final at Crescent Arena.
+  // Final Four — semi-finals and the final at Central Stadium.
   const sf = roundDate(8);
   const sf1 = new Date(sf); sf1.setHours(18, 0, 0, 0);
   const sf2 = new Date(sf); sf2.setDate(sf2.getDate() + 1); sf2.setHours(18, 0, 0, 0);
   const fin = roundDate(9); fin.setHours(20, 0, 0, 0);
   matches.push(
-    { id: 'm-sf-1', stage: 'semi', round: 8, homeId: null, awayId: null, homeLabel: '1st place', awayLabel: '4th place', kickoff: sf1.toISOString(), venueId: 'v-oasis', status: 'scheduled', events: [], referee: 'A. Kaplan' },
-    { id: 'm-sf-2', stage: 'semi', round: 8, homeId: null, awayId: null, homeLabel: '2nd place', awayLabel: '3rd place', kickoff: sf2.toISOString(), venueId: 'v-atlas', status: 'scheduled', events: [], referee: 'J. Ortega' },
-    { id: 'm-final', stage: 'final', round: 9, homeId: null, awayId: null, homeLabel: 'Winner SF1', awayLabel: 'Winner SF2', kickoff: fin.toISOString(), venueId: 'v-crescent', status: 'scheduled', events: [], referee: 'M. Saad' },
+    { id: 'm-sf-1', stage: 'semi', round: 8, homeId: null, awayId: null, homeLabel: '1st place', awayLabel: '4th place', kickoff: sf1.toISOString(), venueId: 'v-north', status: 'scheduled', events: [], referee: 'A. Kaplan' },
+    { id: 'm-sf-2', stage: 'semi', round: 8, homeId: null, awayId: null, homeLabel: '2nd place', awayLabel: '3rd place', kickoff: sf2.toISOString(), venueId: 'v-harbour', status: 'scheduled', events: [], referee: 'J. Ortega' },
+    { id: 'm-final', stage: 'final', round: 9, homeId: null, awayId: null, homeLabel: 'Winner SF1', awayLabel: 'Winner SF2', kickoff: fin.toISOString(), venueId: 'v-central', status: 'scheduled', events: [], referee: 'M. Saad' },
   );
 
   const created = new Date(seasonStart.getTime() - 30 * 864e5).toISOString();
   const cap = (teamId: string, idx: number) => players.filter((p) => p.teamId === teamId)[idx];
   const users: User[] = [
     { id: 'u-god', name: 'Omar Khalid', email: 'admin@kooratour.com', role: 'god', privileges: [], createdAt: created },
-    { id: 'u-host1', name: 'Leyla Arslan', email: 'leyla@kooratour.com', role: 'host', privileges: [...ROLE_PRESETS.host], venueIds: ['v-crescent', 'v-oasis'], createdAt: created },
-    { id: 'u-host2', name: 'Daniel Costa', email: 'daniel@kooratour.com', role: 'host', privileges: ['enter_results'], venueIds: ['v-atlas', 'v-marina', 'v-cedar'], createdAt: created },
+    { id: 'u-host1', name: 'Leyla Arslan', email: 'leyla@kooratour.com', role: 'host', privileges: [...ROLE_PRESETS.host], venueIds: ['v-central', 'v-north'], createdAt: created },
+    { id: 'u-host2', name: 'Daniel Costa', email: 'daniel@kooratour.com', role: 'host', privileges: ['enter_results'], venueIds: ['v-harbour', 'v-hillside', 'v-riverside'], createdAt: created },
     { id: 'u-org1', name: 'Nour Hamdi', email: 'nour@kooratour.com', role: 'organizer', privileges: [...ROLE_PRESETS.organizer, 'manage_teams'], createdAt: created },
     { id: 'u-org2', name: 'Bora Kaya', email: 'bora@kooratour.com', role: 'organizer', privileges: ['publish_news', 'manage_highlights'], createdAt: created },
   ];
@@ -239,16 +240,16 @@ export function createSeed(now = new Date()): DB {
     const p = cap(t.id, 7);
     users.push({ id: `u-pl-${t.short.toLowerCase()}`, name: p.name, email: `${p.name.split(' ')[0].toLowerCase()}.${t.short.toLowerCase()}@kooratour.com`, role: 'player', privileges: [], teamId: t.id, playerId: p.id, createdAt: created });
   });
-  users.push({ id: 'u-fan', name: 'Sara Fan', email: 'sara@fans.com', role: 'fan', privileges: [], favoriteTeamId: 't-marina', createdAt: created });
+  users.push({ id: 'u-fan', name: 'Sara Fan', email: 'sara@fans.com', role: 'fan', privileges: [], favoriteTeamId: 't-hillside', createdAt: created });
 
   const day = (offset: number) => new Date(now.getTime() - offset * 864e5).toISOString();
   const lastRound = matches.filter((m) => m.round === 5);
   const news: NewsItem[] = [
-    { id: 'n-1', title: 'Matchday 6 preview: the title race tightens', summary: 'Four fixtures, two derbies, and a top-of-the-table clash that could decide who hosts the semi-final.', body: 'With two league rounds left before the Final Four, every point counts. Crescent City FC and Royal Oasis are separated by the slimmest of margins, while Galata Rovers and Marina Athletic are fighting for the last semi-final spot.\n\nOur organizers confirm that all venues are ready, with extra transit services running from the city centre. Gates open 90 minutes before kickoff.', category: 'Preview', date: day(1), teamIds: ['t-crescent', 't-oasis'], authorId: 'u-org1' },
-    { id: 'n-2', title: `Matchday 5 report: ${lastRound.length} matches, plenty of drama`, summary: 'Late winners, a red card and a goalkeeper masterclass — here is everything you missed.', body: 'Matchday 5 delivered again. Full scores, scorers and stats are available in the Matches section, and every goal is in the Highlights hub.\n\nThe Player of the Match vote is open for 48 hours after the final whistle — make your pick on each match page.', category: 'Report', date: day(5), teamIds: [], authorId: 'u-org1' },
-    { id: 'n-3', title: 'Final Four venues confirmed', summary: 'Oasis Dome and Atlas Park will host the semi-finals; Crescent Arena stages the Final.', body: 'The God Admin has approved the knockout venues. The 1st-placed side faces 4th at Oasis Dome, while 2nd meets 3rd at Atlas Park the following evening. The Final will be played under the lights at Crescent Arena.', category: 'Announcement', date: day(9), teamIds: [], authorId: 'u-god' },
-    { id: 'n-4', title: 'Inside the Cedar academy: the pathway that keeps producing', summary: 'Half the Cedar FC squad came through the club\'s youth system. We visited the training ground.', body: 'At Cedar Hills the philosophy is simple: trust youth. Coach Karim Haddad explains how the club scouts, trains and promotes its homegrown talent — and why other clubs on the tour are now copying the model.', category: 'Feature', date: day(12), teamIds: ['t-cedar'], authorId: 'u-org2' },
-    { id: 'n-5', title: '"We play for the city" — Galata captain on 117 years of history', summary: 'The Rovers skipper talks tradition, pressure, and the famous stripes.', body: 'Galata Rovers are the oldest club on the tour, and their captain feels the weight of every one of those years. "When you put on the stripes you represent generations," he told us before training.', category: 'Interview', date: day(16), teamIds: ['t-galata'], authorId: 'u-org2' },
+    { id: 'n-1', title: 'Matchday 6 preview: the title race tightens', summary: 'Four fixtures, a city derby, and a top-of-the-table clash that could decide who hosts the semi-final.', body: 'With two league rounds left before the Final Four, every point counts. Old Town FC and Northgate Rovers are separated by the slimmest of margins, while Garden District and Hillside Athletic are fighting for the last semi-final spot.\n\nOur hosts confirm all five grounds are ready. Entry is free for under-12s at every venue this weekend.', category: 'Preview', date: day(1), teamIds: ['t-old', 't-north'], authorId: 'u-org1' },
+    { id: 'n-2', title: `Matchday 5 report: ${lastRound.length} matches, plenty of drama`, summary: 'Late winners, a red card and a goalkeeper masterclass — here is everything you missed.', body: 'Matchday 5 delivered again. Full scores, scorers and stats are in the Matches section, and every goal is in the Highlights hub.\n\nThe Player of the Match vote stays open after the final whistle — make your pick on each match page.', category: 'Report', date: day(5), teamIds: [], authorId: 'u-org1' },
+    { id: 'n-3', title: 'Final Four venues confirmed', summary: 'Northgate Arena and Harbour Ground host the semi-finals; Central Stadium stages the Final.', body: 'The God Admin has approved the knockout venues. 1st place faces 4th at Northgate Arena, while 2nd meets 3rd at Harbour Ground the following evening. The Final is under the lights at Central Stadium in the old town.', category: 'Announcement', date: day(9), teamIds: [], authorId: 'u-god' },
+    { id: 'n-4', title: 'Riverside FC: the park club that keeps producing', summary: 'Half the Riverside squad grew up on the same park pitch. We spent an evening at training.', body: 'At Riverside Park the philosophy is simple: trust the neighbourhood. Coach Karim Haddad explains how the club finds players on its own streets — and why other clubs on the tour are now copying the model.', category: 'Feature', date: day(12), teamIds: ['t-riverside'], authorId: 'u-org2' },
+    { id: 'n-5', title: '"We play for the district" — Garden District captain on founding the tour', summary: 'The captain talks community, pressure, and the famous red sash.', body: 'Garden District were there when the tour kicked off, and their captain feels it every week. "When you put on the sash you represent your street, your family, your neighbours," he told us before training.', category: 'Interview', date: day(16), teamIds: ['t-garden'], authorId: 'u-org2' },
   ];
 
   const finished = matches.filter((m) => m.status === 'finished').slice(-8).reverse();
@@ -269,20 +270,20 @@ export function createSeed(now = new Date()): DB {
     {
       id: 'r-seed-1', type: 'reschedule', status: 'pending', createdBy: `u-cap-${teams.find((t) => t.id === r6[1].homeId)!.short.toLowerCase()}`,
       createdAt: day(1), teamId: r6[1].homeId!, matchId: r6[1].id,
-      reason: 'Three players are returning late from international duty. Requesting a 2-hour delay to allow recovery.',
+      reason: 'Several of our players work Saturday shifts until 16:00. Requesting a 2-hour delay so the full squad can make kickoff.',
       payload: { kind: 'delay', originalKickoff: r6[1].kickoff, originalVenueId: r6[1].venueId, proposedKickoff: new Date(new Date(r6[1].kickoff).getTime() + 2 * 36e5).toISOString() },
       recommendations: [{ userId: 'u-org1', verdict: 'support', note: 'Venue is free until 23:00. No broadcast clash.', at: day(0.5) }],
     },
     {
-      id: 'r-seed-2', type: 'add_player', status: 'pending', createdBy: 'u-cap-sah', createdAt: day(2), teamId: 't-sahara',
-      reason: 'Replacement for injured left-back (long-term ACL).',
+      id: 'r-seed-2', type: 'add_player', status: 'pending', createdBy: 'u-cap-lgh', createdAt: day(2), teamId: 't-lighthouse',
+      reason: 'Replacement for our injured left-back (long-term knee injury). Ziad lives in Harbour and trains with us.',
       payload: { player: { name: 'Ziad Mourad', number: 33, position: 'DF', nationality: 'Egypt', age: 22, height: 178, foot: 'Left' } },
       recommendations: [],
     },
   ];
 
   const notices: Notice[] = [
-    { id: 'no-1', to: 'all', text: 'Final Four venues confirmed — Crescent Arena hosts the Final.', at: day(9), link: '/news/n-3', readBy: [] },
+    { id: 'no-1', to: 'all', text: 'Final Four venues confirmed — Central Stadium hosts the Final.', at: day(9), link: '/news/n-3', readBy: [] },
     { id: 'no-2', to: 'role:god', text: '2 requests are waiting for your decision.', at: day(1), link: '/dashboard/admin', readBy: [] },
   ];
 

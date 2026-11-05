@@ -4,6 +4,7 @@ import type { Match, Team } from '../types';
 import { useLookup, useStore } from '../store/store';
 import { standings, score, hasScore, leaders, type LeaderKey, resolveSlot } from '../data/derive';
 import { Crest, FormBadge, Avatar } from './ui';
+import { G } from '../theme';
 import { fmtTime, roundLabel } from '../format';
 
 export function PageHead({ kicker, title, sub, children }: { kicker?: string; title: string; sub?: string; children?: ReactNode }) {
@@ -57,12 +58,12 @@ export function StandingsTable({ compact = false, highlight }: { compact?: boole
 }
 
 const LEADER_META: Record<LeaderKey, { label: string; color: string }> = {
-  goals: { label: 'Goals', color: 'linear-gradient(135deg,#c8102e,#7d0a1d)' },
-  assists: { label: 'Assists', color: 'linear-gradient(135deg,#1f4fd1,#0e2a7a)' },
-  ga: { label: 'Goal contributions', color: 'linear-gradient(135deg,#e87722,#9a4a0e)' },
-  cleanSheets: { label: 'Clean sheets', color: 'linear-gradient(135deg,#1fb5b0,#0b6a67)' },
-  yellows: { label: 'Yellow cards', color: 'linear-gradient(135deg,#c99410,#7a5900)' },
-  reds: { label: 'Red cards', color: 'linear-gradient(135deg,#5b1020,#2a0710)' },
+  goals: { label: 'Goals', color: G.red },
+  assists: { label: 'Assists', color: G.blue },
+  ga: { label: 'Goal contributions', color: G.turq },
+  cleanSheets: { label: 'Clean sheets', color: G.turq },
+  yellows: { label: 'Yellow cards', color: G.night },
+  reds: { label: 'Red cards', color: G.red },
 };
 
 export function LeaderCard({ stat, limit = 5, title }: { stat: LeaderKey; limit?: number; title?: string }) {
@@ -77,7 +78,7 @@ export function LeaderCard({ stat, limit = 5, title }: { stat: LeaderKey; limit?
       <div className="leader-hero" style={{ background: meta.color }}>
         {top ? (
           <>
-            <Avatar name={top.player.name} size={54} color={topTeam?.colors[1] ?? '#fff'} />
+            <Avatar name={top.player.name} size={54} color="#ffffff" />
             <div>
               <div className="small" style={{ opacity: .8, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>{title ?? meta.label}</div>
               <Link to={`/players/${top.player.id}`} className="nm">{top.player.name}</Link>

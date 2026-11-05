@@ -7,7 +7,7 @@ import { fmtDate, fmtTime, roundLabel } from '../format';
 
 /* ---------- Crest: generated shield in team colours ---------- */
 export function Crest({ team, size = 40, label }: { team?: Team; size?: number; label?: string }) {
-  const [c1, c2] = team?.colors ?? ['#5d6478', '#c9ccd6'];
+  const [c1, c2] = team?.colors ?? ['#5d6482', '#c9cde0'];
   const text = team?.short ?? label?.slice(0, 3).toUpperCase() ?? '?';
   const id = `cg-${team?.id ?? text}`;
   return (
@@ -47,7 +47,7 @@ export function Jersey({ colors, number, name, size = 160, away = false }: { col
 }
 
 /* ---------- Avatar ---------- */
-export function Avatar({ name, color = '#1fb5b0', size = 36 }: { name: string; color?: string; size?: number }) {
+export function Avatar({ name, color = '#1cc4bf', size = 36 }: { name: string; color?: string; size?: number }) {
   const initials = name.split(' ').map((p) => p[0]).slice(0, 2).join('');
   return <span className="avatar" style={{ width: size, height: size, background: color, color: pickInk(color), fontSize: size * 0.38 }}>{initials}</span>;
 }

@@ -2,7 +2,17 @@
 
 The fan and team hub for the Koora Tour. It has scores, the table, top scorers and assists, highlights, news, venues and club pages, plus role-based dashboards. Every sensitive decision goes through a **God Admin**.
 
-The design takes cues from the UCL, LaLiga and Premier League sites and from Nike's large-type product grids. The theme uses Istanbul colours: Bosphorus night navy, Iznik turquoise and cobalt, tulip red, sunset gold and marble white, with an Iznik-tile star motif.
+It is built for a **local** tournament: eight neighbourhood clubs playing at five local grounds in one city.
+
+The design takes cues from the UCL, LaLiga and Premier League sites and from Nike's large-type layouts. Dark sections use a UCL-style royal-blue background with sweeping light rings. The site sticks to a **three-colour Istanbul palette**, defined in `src/theme.ts` and the `:root` block of `src/styles/app.css`:
+
+| Colour | Represents | Hex |
+|---|---|---|
+| Bosphorus blue | the Bosphorus and the Blue Mosque | `#0d1f8a` (plus lighter and deeper shades) |
+| Iznik turquoise | Iznik tiles | `#1cc4bf` |
+| Tulip red | the tulip, the emblem of Istanbul | `#e11d3c` |
+
+White and greys are the only other colours. Club crests are limited to the same palette.
 
 ## Run it
 

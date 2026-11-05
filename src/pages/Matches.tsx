@@ -5,6 +5,7 @@ import { useStore, useLookup, canRunMatch } from '../store/store';
 import { Crest, Empty, StatusPill, Countdown, Avatar } from '../components/ui';
 import { PageHead, FixtureRow } from '../components/blocks';
 import { score, hasScore, resolveSlot, teamMatches, resultFor } from '../data/derive';
+import { C } from '../theme';
 import { fmtDate, fmtLong, fmtTime, mapsEmbed, mapsUrl, roundLabel, downloadIcs } from '../format';
 
 export default function Matches() {
@@ -92,7 +93,7 @@ export function MatchDetail() {
   const scorersFor = (teamId: string | null) => goals
     .filter((g) => (g.type === 'own_goal' ? g.teamId !== teamId : g.teamId === teamId))
     .map((g) => `${L.player(g.playerId)?.name.split(' ').slice(-1)[0]} ${g.minute}'${g.type === 'penalty' ? ' (P)' : g.type === 'own_goal' ? ' (OG)' : ''}`);
-  const colors: [string, string] = [home?.colors[0] ?? '#0a1633', away && away.colors[0] !== home?.colors[0] ? away.colors[0] : (away?.colors[1] ?? '#1fb5b0')];
+  const colors: [string, string] = [C.turq, C.red];
 
   // Player of the Match voting (fans and anyone signed in) — open once the match is finished.
   const votes = Object.values(db.motmVotes).map((v) => v[m.id]).filter(Boolean);
@@ -111,7 +112,7 @@ export function MatchDetail() {
       <section className="mc-hero">
         <div className="container">
           <div className="row-between wrap">
-            <span className="kicker" style={{ color: 'var(--gold)', margin: 0 }}>{roundLabel(m.stage, m.round)} · {fmtLong(m.kickoff)}</span>
+            <span className="kicker" style={{ margin: 0 }}>{roundLabel(m.stage, m.round)} · {fmtLong(m.kickoff)}</span>
             <StatusPill m={m} />
           </div>
           <div className="mc-score">

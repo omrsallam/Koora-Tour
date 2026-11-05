@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useStore, useLookup } from '../store/store';
 import { Crest, Jersey, FormBadge, Empty, MatchCard, Avatar } from '../components/ui';
+import { C } from '../theme';
 import { PageHead } from '../components/blocks';
 import { standings, teamMatches, teamSeasonStats, playerTotals } from '../data/derive';
 import { fmtDate, mapsUrl } from '../format';
@@ -19,15 +20,14 @@ export default function Teams() {
             const fav = user?.favoriteTeamId === t.id;
             return (
               <Link to={`/teams/${t.id}`} className="team-tile" key={t.id}>
-                <div className="team-tile-top" style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[0]}cc)` }}>
+                <div className="team-tile-top">
                   <Crest team={t} size={64} />
-                  <Jersey colors={t.colors} size={72} />
                 </div>
                 <div className="team-tile-body">
                   <div><b>{t.name}</b><div className="muted small">{t.city} · Est. {t.founded}</div></div>
                   <div style={{ textAlign: 'right' }}>
                     <b style={{ fontFamily: 'var(--display)', fontSize: '1.5rem' }}>{pos}</b>
-                    {fav && <div className="small" style={{ color: 'var(--gold)' }}>★ Following</div>}
+                    {fav && <div className="small" style={{ color: C.turqDeep, fontWeight: 700 }}>★ Following</div>}
                   </div>
                 </div>
               </Link>
@@ -63,11 +63,11 @@ export function TeamDetail() {
 
   return (
     <>
-      <section className="club-hero" style={{ background: `linear-gradient(120deg, ${t.colors[0]}, #0a1633 85%)` }}>
+      <section className="club-hero">
         <div className="container club-hero-inner">
           <Crest team={t} size={120} />
           <div>
-            <div className="kicker" style={{ color: t.colors[1] === '#ffffff' || t.colors[1] === '#f4f1ea' ? 'var(--gold)' : t.colors[1] }}>{t.city} · Est. {t.founded}</div>
+            <div className="kicker">{t.city} · Est. {t.founded}</div>
             <h1>{t.name}</h1>
             <div className="facts">
               <div><b>{pos + 1}{['st', 'nd', 'rd'][pos] ?? 'th'}</b>Position</div>
@@ -119,11 +119,6 @@ export function TeamDetail() {
                   <div className="muted small">Capacity {venue.capacity.toLocaleString()}</div>
                   <a href={mapsUrl(`${venue.name}, ${venue.address}`)} target="_blank" rel="noreferrer" className="link-btn" style={{ display: 'inline-block', marginTop: 8, padding: 0 }}>Directions →</a>
                 </div>
-                <div className="card card-pad" style={{ textAlign: 'center' }}>
-                  <h3>Kits</h3>
-                  <div className="row" style={{ justifyContent: 'center' }}><Jersey colors={t.colors} size={120} /><Jersey colors={t.colors} size={120} away /></div>
-                  <div className="muted small">Home · Away</div>
-                </div>
               </div>
             </div>
           )}
@@ -136,9 +131,9 @@ export function TeamDetail() {
                   <div className="squad-grid">
                     {squad.filter((x) => x.position === p).map((pl) => (
                       <Link to={`/players/${pl.id}`} className="player-card" key={pl.id}>
-                        <div className="player-card-top" style={{ background: `linear-gradient(135deg, ${t.colors[0]}, #0a1633)` }}>
+                        <div className="player-card-top">
                           <span className="num">{pl.number}</span>
-                          <Avatar name={pl.name} size={56} color={t.colors[1]} />
+                          <Avatar name={pl.name} size={56} color={C.turq} />
                         </div>
                         <div className="player-card-body">
                           <b>{pl.name}{captain?.playerId === pl.id && <span className="pill pill-gold" style={{ marginLeft: 6 }}>C</span>}</b>
@@ -185,7 +180,7 @@ export function PlayerProfile() {
   const contributions = db.matches.filter((m) => m.status === 'finished' && m.events.some((e) => e.playerId === p.id || e.assistId === p.id)).reverse();
   return (
     <>
-      <section className="club-hero" style={{ background: `linear-gradient(120deg, ${t.colors[0]}, #0a1633 80%)` }}>
+      <section className="club-hero">
         <div className="container club-hero-inner">
           <Jersey colors={t.colors} number={p.number} name={p.name.split(' ').slice(-1)[0]} size={170} />
           <div>

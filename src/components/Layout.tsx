@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStore, dashboardPath, ROLE_LABEL } from '../store/store';
-import { Crest, Star8, Avatar } from './ui';
+import { Star8, Avatar } from './ui';
+import { C } from '../theme';
 import { score } from '../data/derive';
 import { timeAgo } from '../format';
 import Search from './Search';
@@ -15,20 +16,6 @@ const NAV = [
   { to: '/news', label: 'News' },
   { to: '/venues', label: 'Venues' },
 ];
-
-function ClubStrip() {
-  const { db } = useStore();
-  return (
-    <div className="club-strip">
-      <div className="container club-strip-inner">
-        <span className="club-strip-label">Clubs</span>
-        {db.teams.map((t) => (
-          <Link key={t.id} to={`/teams/${t.id}`} title={t.name}><Crest team={t} size={22} /></Link>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function LiveTicker() {
   const { db } = useStore();
@@ -91,11 +78,10 @@ export default function Layout() {
   return (
     <div className="app">
       <a href="#main" className="skip">Skip to content</a>
-      <ClubStrip />
       <header className="header">
         <div className="container header-inner">
           <Link to="/" className="brand" aria-label={`${db.settings.tournamentName} home`}>
-            <span className="brand-mark"><Star8 size={22} color="#f2b33d" /></span>
+            <span className="brand-mark"><Star8 size={22} color="#ffffff" /></span>
             <span className="brand-text">KOORA<span>TOUR</span></span>
           </Link>
           <nav className={`nav ${menu ? 'open' : ''}`} aria-label="Main">
@@ -108,7 +94,7 @@ export default function Layout() {
             {user ? (
               <div className="user-chip">
                 <Link to={dashboardPath(user)} className="user-chip-link" title={`${user.name} · ${ROLE_LABEL[user.role]}`}>
-                  <Avatar name={user.name} size={30} color={user.role === 'god' ? '#f2b33d' : '#1fb5b0'} />
+                  <Avatar name={user.name} size={30} color={user.role === 'god' ? C.red : C.turq} />
                   <span className="user-chip-text"><b>{user.name.split(' ')[0]}</b><small>{ROLE_LABEL[user.role]}</small></span>
                 </Link>
                 <button className="link-btn on-dark" onClick={() => { logout(); nav('/'); }}>Sign out</button>
@@ -128,7 +114,7 @@ export default function Layout() {
         <div className="tile-band" aria-hidden="true" />
         <div className="container footer-grid">
           <div>
-            <div className="brand brand-footer"><span className="brand-mark"><Star8 size={22} color="#f2b33d" /></span><span className="brand-text">KOORA<span>TOUR</span></span></div>
+            <div className="brand brand-footer"><span className="brand-mark"><Star8 size={22} color="#ffffff" /></span><span className="brand-text">KOORA<span>TOUR</span></span></div>
             <p className="muted-light">Season {db.settings.season}. Every score, every goal, every club — in one place.</p>
           </div>
           <div>

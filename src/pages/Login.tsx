@@ -8,7 +8,7 @@ import type { Role } from '../types';
 import { NewsCard } from './News';
 
 const ROLE_ORDER: Role[] = ['god', 'host', 'organizer', 'captain', 'player', 'fan'];
-const ROLE_COLOR: Record<Role, string> = { god: '#f2b33d', host: '#1fb5b0', organizer: '#2456d6', captain: '#e3263b', player: '#5fd6cf', fan: '#c9ccd6' };
+const ROLE_COLOR: Record<Role, string> = { god: '#1cc4bf', host: '#1cc4bf', organizer: '#2a46d6', captain: '#e11d3c', player: '#6fe0dc', fan: '#c9cde0' };
 
 export default function Login() {
   const { db, login, signupFan } = useStore();
@@ -28,8 +28,8 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <div className="login-art">
-        <Star8 size={54} color="#f2b33d" />
-        <h1 style={{ fontSize: 'clamp(2.4rem,5vw,4rem)', marginTop: 20 }}>Your club.<br /><span style={{ color: 'var(--gold)' }}>Your hub.</span></h1>
+        <Star8 size={54} color="#1cc4bf" />
+        <h1 style={{ fontSize: 'clamp(2.4rem,5vw,4rem)', marginTop: 20 }}>Your club.<br /><span style={{ color: 'var(--turq)' }}>Your hub.</span></h1>
         <p className="muted-light" style={{ maxWidth: 440, marginTop: 16 }}>Fans follow their club and vote. Players see their schedule and venues. Captains manage their squad. Hosts & organizers run match day — and the God Admin signs off every sensitive decision.</p>
       </div>
       <div className="login-form">
@@ -52,7 +52,7 @@ export default function Login() {
                   <button key={u.id} className="demo-account" onClick={() => go(u.id)}>
                     {team ? <Crest team={team} size={34} /> : <Avatar name={u.name} size={34} color={ROLE_COLOR[u.role]} />}
                     <span style={{ flex: 1 }}><b>{u.name}</b><small>{u.email}{team ? ` · ${team.name}` : ''}</small></span>
-                    <span className="pill" style={{ background: ROLE_COLOR[u.role], color: '#0a1633' }}>{ROLE_LABEL[u.role]}</span>
+                    <span className="pill" style={{ background: ROLE_COLOR[u.role], color: '#071355' }}>{ROLE_LABEL[u.role]}</span>
                   </button>
                 );
               })}
@@ -113,7 +113,7 @@ export function MyKoora() {
                 <div className="kpi"><span>Position</span><b>{pos}</b></div>
                 <div className="kpi"><span>Points</span><b>{row?.pts}</b></div>
                 <div className="kpi"><span>Form</span><div className="row" style={{ gap: 4, marginTop: 12 }}>{row?.form.map((f, i) => <FormBadge key={i} r={f} />)}</div></div>
-                <div className="kpi" style={{ ['--k' as string]: 'var(--gold)' }}><span>Your MOTM votes</span><b>{votes}</b></div>
+                <div className="kpi" style={{ ['--k' as string]: 'var(--turq)' }}><span>Your MOTM votes</span><b>{votes}</b></div>
               </div>
               <div>
                 <h3 style={{ marginBottom: 12 }}>Coming up</h3>

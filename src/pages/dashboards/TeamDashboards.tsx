@@ -76,7 +76,7 @@ function NextMatchBanner({ teamId }: { teamId: string }) {
   return (
     <div className="live-console grid grid-2" style={{ alignItems: 'center', marginBottom: 20 }}>
       <div>
-        <div className="kicker" style={{ color: 'var(--gold)' }}>Next match · {roundLabel(next.stage, next.round)}</div>
+        <div className="kicker" style={{ color: 'var(--turq)' }}>Next match · {roundLabel(next.stage, next.round)}</div>
         <div className="row" style={{ fontFamily: 'var(--display)', fontSize: '1.8rem', fontWeight: 800, textTransform: 'uppercase' }}>vs <Crest team={opp} size={36} /> {opp?.name}</div>
         <div className="small" style={{ opacity: .8 }}>{fmtDateTime(next.kickoff)} · {v.name}, {v.city}</div>
       </div>
@@ -249,7 +249,7 @@ function CaptainInner({ u }: { u: User }) {
             <div className="kpi"><span>Points</span><b>{row.pts}</b></div>
             <div className="kpi"><span>Goal difference</span><b>{row.gd > 0 ? `+${row.gd}` : row.gd}</b></div>
             <div className="kpi" style={{ ['--k' as string]: 'var(--cobalt)' }}><span>Squad</span><b>{squadSize}/{db.settings.maxSquadSize}</b></div>
-            <div className="kpi" style={{ ['--k' as string]: 'var(--gold)' }}><span>Pending requests</span><b>{pending.length}</b></div>
+            <div className="kpi" style={{ ['--k' as string]: 'var(--turq)' }}><span>Pending requests</span><b>{pending.length}</b></div>
           </div>
           {db.settings.rosterLocked && <div className="god-banner"><span>🔒</span><div><b>Rosters are locked</b><div className="small">The God Admin has frozen squad changes. Schedule requests are still open.</div></div></div>}
           <div className="grid grid-2">

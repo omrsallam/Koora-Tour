@@ -8,7 +8,7 @@ import { score } from '../../data/derive';
 
 export interface DashSection { id: string; label: string; icon: string; badge?: number; group?: string }
 
-export function DashShell({ sections, active, onSelect, children, accent = '#1fb5b0' }: { sections: DashSection[]; active: string; onSelect: (id: string) => void; children: ReactNode; accent?: string }) {
+export function DashShell({ sections, active, onSelect, children, accent = '#1cc4bf' }: { sections: DashSection[]; active: string; onSelect: (id: string) => void; children: ReactNode; accent?: string }) {
   const { user } = useStore();
   let lastGroup: string | undefined;
   return (

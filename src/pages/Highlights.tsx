@@ -5,15 +5,10 @@ import { useStore, useLookup } from '../store/store';
 import { Crest, Modal, Empty } from '../components/ui';
 import { PageHead } from '../components/blocks';
 import { score } from '../data/derive';
+import { G } from '../theme';
 import { compact, timeAgo } from '../format';
 
-const KIND_BG: Record<Highlight['kind'], string> = {
-  Goals: 'linear-gradient(135deg,#0a1633,#19306a)',
-  Extended: 'linear-gradient(135deg,#0b6a67,#0a1633)',
-  Saves: 'linear-gradient(135deg,#1f4fd1,#0a1633)',
-  Interview: 'linear-gradient(135deg,#5b0614,#c8102e)',
-  Skills: 'linear-gradient(135deg,#9a4a0e,#f2b33d)',
-};
+const KIND_BG: Record<Highlight['kind'], string> = { Goals: G.blue, Extended: G.turq, Saves: G.night, Interview: G.red, Skills: G.turq };
 
 export function HighlightCard({ h, onOpen }: { h: Highlight; onOpen: (h: Highlight) => void }) {
   const { db } = useStore();
@@ -23,11 +18,11 @@ export function HighlightCard({ h, onOpen }: { h: Highlight; onOpen: (h: Highlig
   const away = L.team(m?.awayId);
   return (
     <button className="video-card" onClick={() => onOpen(h)}>
-      <div className="video-thumb" style={{ background: home ? `linear-gradient(120deg, ${home.colors[0]} 0 50%, ${away?.colors[0]} 50%)` : KIND_BG[h.kind] }}>
+      <div className="video-thumb" style={{ background: KIND_BG[h.kind] }}>
         {home && <Crest team={home} size={56} />}
         {away && <Crest team={away} size={56} />}
         <span className="pill pill-ghost kind" style={{ background: 'rgba(255,255,255,.9)' }}>{h.kind}</span>
-        <span className="play"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#0a1633" /></svg></span>
+        <span className="play"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#071355" /></svg></span>
         <span className="dur">{h.duration}</span>
       </div>
       <div className="video-body">

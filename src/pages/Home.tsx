@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useStore, useLookup, dashboardPath } from '../store/store';
-import { Crest, MatchCard, SectionHead, Countdown, Jersey, FormBadge, Star8 } from '../components/ui';
+import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8 } from '../components/ui';
+import { C, G } from '../theme';
+import type { Highlight } from '../types';
+import { score } from '../data/derive';
+import { compact, timeAgo } from '../format';
 import { StandingsTable, LeaderCard, Bracket } from '../components/blocks';
 import { standings, teamMatches } from '../data/derive';
 import { fmtDateTime, fmtLong, roundLabel } from '../format';
@@ -8,10 +12,10 @@ import { HighlightCard, useHighlightPlayer } from './Highlights';
 import { NewsCard } from './News';
 
 function Skyline() {
-  // Stylised Istanbul skyline: domes and minarets silhouette.
+  // Stylised skyline of domes and minarets — a nod to Istanbul.
   return (
     <svg className="hero-skyline" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true">
-      <path fill="#050b1f" d="M0 90V70h60v-8h20v8h40V52c0-14 22-24 40-24s40 10 40 24v18h18V20l4-14 4 14v50h30V58c0-8 12-14 22-14s22 6 22 14v12h60V40c0-22 34-36 60-36s60 14 60 36v30h14V14l4-12 4 12v56h40V60c0-10 14-16 26-16s26 6 26 16v10h70v-6h30v6h44V48c0-16 26-28 46-28s46 12 46 28v22h16V22l4-14 4 14v48h60V62h40v8h70V54c0-10 16-18 30-18s30 8 30 18v16h60v20z" />
+      <path fill={C.blueNight} d="M0 90V70h60v-8h20v8h40V52c0-14 22-24 40-24s40 10 40 24v18h18V20l4-14 4 14v50h30V58c0-8 12-14 22-14s22 6 22 14v12h60V40c0-22 34-36 60-36s60 14 60 36v30h14V14l4-12 4 12v56h40V60c0-10 14-16 26-16s26 6 26 16v10h70v-6h30v6h44V48c0-16 26-28 46-28s46 12 46 28v22h16V22l4-14 4 14v48h60V62h40v8h70V54c0-10 16-18 30-18s30 8 30 18v16h60v20z" />
     </svg>
   );
 }
@@ -49,7 +53,7 @@ function YourClub() {
       <div className="container">
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="grid" style={{ gridTemplateColumns: 'auto 1fr', gap: 0 }}>
-            <div style={{ background: team.colors[0], padding: 22, display: 'grid', placeItems: 'center' }}><Crest team={team} size={72} /></div>
+            <div style={{ background: G.night, padding: 22, display: 'grid', placeItems: 'center' }}><Crest team={team} size={72} /></div>
             <div className="card-pad row-between wrap" style={{ gap: 24 }}>
               <div>
                 <div className="kicker">{user?.teamId ? 'Your team' : 'Your club'}</div>
@@ -76,6 +80,73 @@ function YourClub() {
   );
 }
 
+/** UCL-style row of circular "stories" (latest results) above a featured video and headlines. */
+function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
+  const { db } = useStore();
+  const L = useLookup();
+  const finished = db.matches.filter((m) => m.status === 'finished').sort((a, b) => b.kickoff.localeCompare(a.kickoff)).slice(0, 10);
+  const featured = db.highlights[0];
+  const fm = featured && db.matches.find((m) => m.id === featured.matchId);
+  return (
+    <div className="stories-section">
+      <div className="container">
+        <div className="stories" role="list" aria-label="Latest results">
+          {finished.map((m) => {
+            const [h, a] = score(m);
+            const hl = db.highlights.find((x) => x.matchId === m.id);
+            const home = L.team(m.homeId); const away = L.team(m.awayId);
+            const label = `${home?.short} ${h}-${a} ${away?.short}`;
+            const inner = (
+              <>
+                <span className="story-ring"><span className="story-disc"><Crest team={home} size={30} /><Crest team={away} size={30} /></span></span>
+                <span className="story-label">{label}{hl && <span aria-hidden="true"> ▶</span>}</span>
+              </>
+            );
+            return hl
+              ? <button key={m.id} role="listitem" className="story" onClick={() => onOpen(hl)} aria-label={`Watch ${label} highlights`}>{inner}</button>
+              : <Link key={m.id} role="listitem" className="story" to={`/matches/${m.id}`}>{inner}</Link>;
+          })}
+        </div>
+        <div className="feature-grid">
+          {featured && (
+            <button className="feature-card" onClick={() => onOpen(featured)}>
+              <div className="feature-art">
+                {fm ? (
+                  <div className="row" style={{ gap: 28 }}>
+                    <Crest team={L.team(fm.homeId)} size={110} />
+                    <span className="feature-score">{score(fm).join(' – ')}</span>
+                    <Crest team={L.team(fm.awayId)} size={110} />
+                  </div>
+                ) : <Star8 size={90} color={C.turq} />}
+                <span className="play"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill={C.blueDeep} /></svg></span>
+              </div>
+              <div className="feature-body">
+                <span className="pill pill-gold">{featured.kind}</span>
+                <b>{featured.title}</b>
+                <span className="small muted">{featured.duration} · {compact(featured.views)} views · {timeAgo(featured.date)}</span>
+              </div>
+            </button>
+          )}
+          <div className="headlines">
+            <h3>Headlines</h3>
+            {db.news.slice(0, 5).map((n) => {
+              const t = L.team(n.teamIds[0]);
+              return (
+                <Link to={`/news/${n.id}`} className="headline" key={n.id}>
+                  <span className="headline-thumb" style={{ background: n.category === 'Announcement' ? G.red : n.category === 'Feature' ? G.turq : G.blue }}>
+                    {t ? <Crest team={t} size={34} /> : <Star8 size={26} color="#fff" />}
+                  </span>
+                  <span><b>{n.title}</b><small>{n.category} · {timeAgo(n.date)}</small></span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { db, user } = useStore();
   const L = useLookup();
@@ -97,8 +168,8 @@ export default function Home() {
         <div className="container hero-inner">
           <div>
             <div className="kicker">Season {db.settings.season} · Road to the Final</div>
-            <h1>Every goal.<span>Every city.</span></h1>
-            <p className="lead">Live scores, the table, top scorers, highlights and every club on the {db.settings.tournamentName} — all in one hub. {final && <>The Final is on <b style={{ color: '#fff' }}>{fmtLong(final.kickoff)}</b> at {L.venue(final.venueId)?.name}.</>}</p>
+            <h1>Our city.<span>Our cup.</span></h1>
+            <p className="lead">Eight neighbourhood clubs, five local grounds, one trophy. Live scores, the table, top scorers and highlights from the {db.settings.tournamentName} — all in one hub. {final && <>The Final is on <b style={{ color: '#fff' }}>{fmtLong(final.kickoff)}</b> at {L.venue(final.venueId)?.name}.</>}</p>
             <div className="hero-cta">
               <Link to="/matches" className="btn btn-gold">Fixtures & results</Link>
               {user ? <Link to={dashboardPath(user)} className="btn btn-ghost-light">My dashboard</Link> : <Link to="/login" className="btn btn-ghost-light">Join as a fan</Link>}
@@ -121,18 +192,19 @@ export default function Home() {
           )}
         </div>
         <Skyline />
+        <MatchdayStories onOpen={open} />
       </section>
 
       <YourClub />
 
-      <section className="section section-dark">
+      <section className="section">
         <div className="container">
-          <SectionHead kicker="Matchday centre" title={lastRound ? `Matchday ${lastRound} results` : 'Results'} action={<Link to="/matches" className="btn btn-ghost-light btn-sm">All matches</Link>} />
-          <div className="match-grid">{results.map((m) => <MatchCard key={m.id} m={m} dark />)}</div>
+          <SectionHead kicker="Matchday centre" title={lastRound ? `Matchday ${lastRound} results` : 'Results'} action={<Link to="/matches" className="btn btn-ghost btn-sm">All matches</Link>} />
+          <div className="match-grid">{results.map((m) => <MatchCard key={m.id} m={m} />)}</div>
           {nextRound.length > 0 && (
             <>
               <h3 style={{ margin: '34px 0 16px' }}>Coming up · Matchday {lastRound + 1}</h3>
-              <div className="match-grid">{nextRound.map((m) => <MatchCard key={m.id} m={m} dark />)}</div>
+              <div className="match-grid">{nextRound.map((m) => <MatchCard key={m.id} m={m} />)}</div>
             </>
           )}
         </div>
@@ -158,14 +230,14 @@ export default function Home() {
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container">
           <SectionHead kicker="Watch" title="Latest highlights" action={<Link to="/highlights" className="btn btn-ghost btn-sm">All videos</Link>} />
-          <div className="video-grid">{db.highlights.slice(0, 4).map((h) => <HighlightCard key={h.id} h={h} onOpen={open} />)}</div>
+          <div className="video-grid">{db.highlights.slice(1, 5).map((h) => <HighlightCard key={h.id} h={h} onOpen={open} />)}</div>
         </div>
       </section>
 
       <section className="section section-dark" style={{ position: 'relative' }}>
         <div className="container grid grid-2" style={{ alignItems: 'center', gap: 40 }}>
           <div>
-            <div className="kicker" style={{ color: 'var(--gold)' }}>The Final Four</div>
+            <div className="kicker">The Final Four</div>
             <h2 style={{ fontSize: 'clamp(2.2rem,5vw,3.6rem)' }}>Four clubs.<br />One trophy.</h2>
             <p className="muted" style={{ marginTop: 14, maxWidth: 440 }}>The top four after the league phase go through to the semi-finals. Until the last round is played, the bracket shows who would qualify if the season ended today.</p>
             <Link to="/standings" className="btn btn-gold btn-sm" style={{ marginTop: 8 }}>See the race</Link>
@@ -184,29 +256,15 @@ export default function Home() {
       </section>
 
       <section className="section" style={{ paddingTop: 0 }}>
-        <div className="container">
-          <SectionHead kicker="Wear the badge" title="Home kits 26/27" />
-          <div className="kit-rail">
-            {db.teams.map((t) => (
-              <Link to={`/teams/${t.id}`} className="kit" key={t.id}>
-                <div className="kit-img"><Jersey colors={t.colors} size={180} /></div>
-                <div className="kit-info"><b>{t.name}</b><span>Home Stadium Jersey · {t.city}</span></div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section" style={{ paddingTop: 0 }}>
         <div className="container grid grid-2">
-          <div className="promo" style={{ background: 'linear-gradient(135deg,#c8102e,#5b0614)' }}>
-            <Star8 size={40} color="#f2b33d" />
+          <div className="promo" style={{ background: G.red }}>
+            <Star8 size={40} color="#ffffff" />
             <h3>For the fans</h3>
             <p>Follow your club, vote for Player of the Match and get kickoff alerts.</p>
             <div><Link to={user ? '/my-koora' : '/login'} className="btn btn-gold btn-sm">{user ? 'My Koora' : 'Create free account'}</Link></div>
           </div>
-          <div className="promo" style={{ background: 'linear-gradient(135deg,#0b6a67,#0a1633)' }}>
-            <Star8 size={40} color="#5fd6cf" />
+          <div className="promo" style={{ background: G.turq }}>
+            <Star8 size={40} color={C.turq} />
             <h3>Players' hub</h3>
             <p>Your schedule, venues, directions and call times. Add every match to your calendar in one click.</p>
             <div><Link to={user?.role === 'player' || user?.role === 'captain' ? dashboardPath(user) : '/login'} className="btn btn-turq btn-sm">Open players' hub</Link></div>

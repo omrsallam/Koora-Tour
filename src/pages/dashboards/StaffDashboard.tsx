@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import type { EventType, Highlight, Match, MatchStats, NewsItem, User, Venue, Team } from '../../types';
 import { useStore, useLookup, has, canRunMatch, ROLE_LABEL } from '../../store/store';
 import { ALL_PRIVILEGES } from '../../data/seed';
+import { CLUB_SWATCHES } from '../../theme';
 import { Crest, Empty, Modal, useFlash, StatusPill } from '../../components/ui';
 import { DashShell, RequireRole, RequestCard, DashTitle } from './shared';
 import { score } from '../../data/derive';
@@ -146,7 +147,7 @@ function MatchControl({ u, initial }: { u: User; initial?: string }) {
           </div>
           <div className="live-console stack" style={{ gap: 8 }}>
             <h3 style={{ marginBottom: 4 }}>Match stats</h3>
-            <div className="row-between small" style={{ color: 'var(--gold)' }}><b>{home.short}</b><b>{away.short}</b></div>
+            <div className="row-between small" style={{ color: 'var(--turq)' }}><b>{home.short}</b><b>{away.short}</b></div>
             {statRow('possession', 'Possession %')}{statRow('shots', 'Shots')}{statRow('onTarget', 'On target')}{statRow('corners', 'Corners')}{statRow('fouls', 'Fouls')}{statRow('passes', 'Passes')}
             <button className="btn btn-turq btn-sm" onClick={() => updateMatch(m.id, { stats })}>Save stats</button>
           </div>
@@ -279,10 +280,17 @@ function TeamEditor({ t, onClose }: { t: Team; onClose: () => void }) {
       <form className="stack" onSubmit={(e) => { e.preventDefault(); updateTeam(t.id, { coach, bio, colors: [c1, c2] }); onClose(); }}>
         <label className="field">Head coach<input value={coach} onChange={(e) => setCoach(e.target.value)} /></label>
         <label className="field">Club bio<textarea value={bio} onChange={(e) => setBio(e.target.value)} /></label>
-        <div className="form-grid">
-          <label className="field">Primary colour<input type="color" value={c1} onChange={(e) => setC1(e.target.value)} style={{ height: 44 }} /></label>
-          <label className="field">Secondary colour<input type="color" value={c2} onChange={(e) => setC2(e.target.value)} style={{ height: 44 }} /></label>
-        </div>
+        {(['Primary', 'Secondary'] as const).map((label, idx) => (
+          <div key={label}>
+            <div className="small" style={{ fontWeight: 600, marginBottom: 6 }}>{label} colour <span className="muted">(site palette)</span></div>
+            <div className="row wrap">
+              {CLUB_SWATCHES.map((c) => {
+                const cur = idx === 0 ? c1 : c2;
+                return <button type="button" key={c} aria-label={c} aria-pressed={cur === c} onClick={() => (idx === 0 ? setC1(c) : setC2(c))} style={{ width: 34, height: 34, borderRadius: '50%', background: c, border: '1px solid var(--line)', outline: cur === c ? '3px solid var(--ink)' : 'none', outlineOffset: 2 }} />;
+              })}
+            </div>
+          </div>
+        ))}
         <div className="row"><Crest team={{ ...t, colors: [c1, c2] }} size={48} /><span className="muted small">Preview</span></div>
         <div className="form-actions"><button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button><button className="btn btn-primary btn-sm">Save club</button></div>
       </form>
@@ -336,7 +344,7 @@ function StaffInner({ u }: { u: User }) {
   ].filter(Boolean) as { id: string; label: string; icon: string; badge?: number; group?: string }[];
 
   return (
-    <DashShell sections={sections} active={section} onSelect={setSection} accent={u.role === 'host' ? '#1fb5b0' : '#2456d6'}>
+    <DashShell sections={sections} active={section} onSelect={setSection} accent={u.role === 'host' ? '#1cc4bf' : '#2a46d6'}>
       {node}
       {section === 'overview' && (
         <>
@@ -360,7 +368,7 @@ function StaffInner({ u }: { u: User }) {
               ) : (
                 <div className="kpis" style={{ marginBottom: 0 }}>
                   <div className="kpi"><span>Requests to review</span><b>{reviewable.length}</b></div>
-                  <div className="kpi" style={{ ['--k' as string]: 'var(--gold)' }}><span>Articles</span><b>{db.news.filter((n) => n.authorId === u.id).length}</b></div>
+                  <div className="kpi" style={{ ['--k' as string]: 'var(--turq)' }}><span>Articles</span><b>{db.news.filter((n) => n.authorId === u.id).length}</b></div>
                 </div>
               )}
             </div>

@@ -213,7 +213,7 @@ function AdminInner() {
   const shownUsers = db.users.filter((u) => (!userFilter || u.role === userFilter) && (!q || u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase())));
 
   return (
-    <DashShell sections={sections} active={section} onSelect={setSection} accent="#f2b33d">
+    <DashShell sections={sections} active={section} onSelect={setSection} accent="#1cc4bf">
       {node}
       {section === 'overview' && (
         <>
@@ -224,7 +224,7 @@ function AdminInner() {
             {pending.length > 0 && <button className="btn btn-primary btn-sm" style={{ marginLeft: 'auto' }} onClick={() => setSection('approvals')}>Review {pending.length} pending</button>}
           </div>
           <div className="kpis">
-            <div className="kpi" style={{ ['--k' as string]: 'var(--gold)' }}><span>Pending decisions</span><b>{pending.length}</b></div>
+            <div className="kpi" style={{ ['--k' as string]: 'var(--turq)' }}><span>Pending decisions</span><b>{pending.length}</b></div>
             <div className="kpi"><span>Users</span><b>{db.users.length}</b></div>
             <div className="kpi" style={{ ['--k' as string]: 'var(--cobalt)' }}><span>Hosts & organizers</span><b>{staff.length}</b></div>
             <div className="kpi" style={{ ['--k' as string]: 'var(--tulip)' }}><span>Matches played</span><b>{finished.length}/{db.matches.length}</b></div>
@@ -283,7 +283,7 @@ function AdminInner() {
                 <tbody>
                   {shownUsers.map((u) => (
                     <tr key={u.id}>
-                      <td><div className="row"><Avatar name={u.name} size={30} color={u.role === 'god' ? '#f2b33d' : '#1fb5b0'} /><div><b>{u.name}</b><div className="muted small">{u.email}</div></div></div></td>
+                      <td><div className="row"><Avatar name={u.name} size={30} color={u.role === 'god' ? '#1cc4bf' : '#1cc4bf'} /><div><b>{u.name}</b><div className="muted small">{u.email}</div></div></div></td>
                       <td><span className="pill pill-ghost">{ROLE_LABEL[u.role]}</span></td>
                       <td style={{ whiteSpace: 'normal', maxWidth: 360 }}>
                         {u.role === 'god' && <span className="muted small">Full control</span>}

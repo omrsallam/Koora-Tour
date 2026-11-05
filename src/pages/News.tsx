@@ -4,25 +4,20 @@ import type { NewsItem } from '../types';
 import { useStore, useLookup, ROLE_LABEL } from '../store/store';
 import { Crest, Empty, Star8 } from '../components/ui';
 import { PageHead } from '../components/blocks';
+import { C, G } from '../theme';
 import { fmtLong, timeAgo } from '../format';
 
-const CAT_BG: Record<NewsItem['category'], string> = {
-  Report: 'linear-gradient(135deg,#0a1633,#19306a)',
-  Preview: 'linear-gradient(135deg,#0b6a67,#1fb5b0)',
-  Feature: 'linear-gradient(135deg,#9a4a0e,#f2b33d)',
-  Announcement: 'linear-gradient(135deg,#5b0614,#e3263b)',
-  Interview: 'linear-gradient(135deg,#1f4fd1,#0a1633)',
-};
+const CAT_BG: Record<NewsItem['category'], string> = { Report: G.blue, Preview: G.turq, Feature: G.turq, Announcement: G.red, Interview: G.night };
 
 export function NewsCard({ n }: { n: NewsItem }) {
   const L = useLookup();
   const t = L.team(n.teamIds[0]);
   return (
     <Link to={`/news/${n.id}`} className="news-card">
-      <div className="news-art" style={{ background: t ? `linear-gradient(135deg, ${t.colors[0]}, #0a1633)` : CAT_BG[n.category] }}>
+      <div className="news-art" style={{ background: CAT_BG[n.category] }}>
         <div className="row" style={{ width: '100%', justifyContent: 'space-between' }}>
-          <span className="pill" style={{ background: 'rgba(255,255,255,.92)', color: '#0a1633' }}>{n.category}</span>
-          {t ? <Crest team={t} size={40} /> : <Star8 size={34} color="#f2b33d" />}
+          <span className="pill" style={{ background: 'rgba(255,255,255,.92)', color: C.blueDeep }}>{n.category}</span>
+          {t ? <Crest team={t} size={40} /> : <Star8 size={34} color="#ffffff" />}
         </div>
       </div>
       <div className="news-body">
