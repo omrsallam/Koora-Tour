@@ -157,6 +157,7 @@ export default function Home() {
   return (
     <>
       <section className="hero">
+        <div className="hero-top">
         <div className="container hero-inner">
           <div>
             <div className="kicker">Season {db.settings.season} · Road to the Final</div>
@@ -184,6 +185,7 @@ export default function Home() {
           )}
         </div>
         <Skyline />
+        </div>
         <MatchdayStories onOpen={open} />
       </section>
 
