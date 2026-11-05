@@ -278,14 +278,14 @@ function AdminInner() {
               </div>
             </div>
             <div className="table-wrap">
-              <table className="table">
+              <table className="table table-stack">
                 <thead><tr><th>User</th><th>Role</th><th>Scope / privileges</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {shownUsers.map((u) => (
                     <tr key={u.id}>
-                      <td><div className="row"><Avatar name={u.name} size={30} color={u.role === 'god' ? '#1cc4bf' : '#1cc4bf'} /><div><b>{u.name}</b><div className="muted small">{u.email}</div></div></div></td>
-                      <td><span className="pill pill-ghost">{ROLE_LABEL[u.role]}</span></td>
-                      <td style={{ whiteSpace: 'normal', maxWidth: 360 }}>
+                      <td><div className="row"><Avatar name={u.name} size={30} color={u.role === 'god' ? '#e11d3c' : '#1cc4bf'} /><div><b>{u.name}</b><div className="muted small">{u.email}</div></div></div></td>
+                      <td data-label="Role"><span className="pill pill-ghost">{ROLE_LABEL[u.role]}</span></td>
+                      <td data-label="Access" style={{ whiteSpace: 'normal', maxWidth: 360 }}>
                         {u.role === 'god' && <span className="muted small">Full control</span>}
                         {(u.role === 'host' || u.role === 'organizer') && (
                           <div className="row wrap" style={{ gap: 4 }}>
@@ -297,7 +297,7 @@ function AdminInner() {
                         {(u.role === 'captain' || u.role === 'player') && <span className="row small"><Crest team={L.team(u.teamId)} size={18} />{L.team(u.teamId)?.name}</span>}
                         {u.role === 'fan' && <span className="muted small">{u.favoriteTeamId ? `Follows ${L.team(u.favoriteTeamId)?.short}` : '—'}</span>}
                       </td>
-                      <td>{u.suspended ? <span className="pill pill-danger">Suspended</span> : <span className="pill pill-ok">Active</span>}</td>
+                      <td data-label="Status">{u.suspended ? <span className="pill pill-danger">Suspended</span> : <span className="pill pill-ok">Active</span>}</td>
                       <td>
                         {u.role !== 'god' && (
                           <div className="row">
@@ -321,16 +321,16 @@ function AdminInner() {
           <p className="muted">Hosts, organizers and captains must request changes. As God Admin you can edit any fixture directly.</p>
           <div className="card card-pad">
             <div className="table-wrap">
-              <table className="table">
+              <table className="table table-stack">
                 <thead><tr><th>Round</th><th>Match</th><th>Kickoff</th><th>Venue</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {db.matches.map((m) => (
                     <tr key={m.id}>
-                      <td>{roundLabel(m.stage, m.round)}</td>
+                      <td data-label="Round">{roundLabel(m.stage, m.round)}</td>
                       <td><Link to={`/matches/${m.id}`} className="row"><Crest team={L.team(m.homeId)} label={m.homeLabel} size={20} />{L.team(m.homeId)?.short ?? m.homeLabel} v {L.team(m.awayId)?.short ?? m.awayLabel}<Crest team={L.team(m.awayId)} label={m.awayLabel} size={20} /></Link></td>
-                      <td>{fmtDateTime(m.kickoff)}</td>
-                      <td>{L.venue(m.venueId)?.name}</td>
-                      <td><StatusPill m={m} /></td>
+                      <td data-label="Kickoff">{fmtDateTime(m.kickoff)}</td>
+                      <td data-label="Venue">{L.venue(m.venueId)?.name}</td>
+                      <td data-label="Status"><StatusPill m={m} /></td>
                       <td><button className="btn btn-ghost btn-xs" onClick={() => setFixture(m)}>Edit</button></td>
                     </tr>
                   ))}

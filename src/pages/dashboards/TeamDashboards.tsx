@@ -186,7 +186,7 @@ function SquadTable({ teamId, captain, onRemove }: { teamId: string; captain?: U
   return (
     <div className="table-wrap">
       <table className="table">
-        <thead><tr><th className="num">#</th><th>Player</th><th className="num">Pos</th><th>Nationality</th><th className="num">Age</th><th className="num">G</th><th className="num">A</th><th className="num">YC</th>{onRemove && <th></th>}</tr></thead>
+        <thead><tr><th className="num">#</th><th>Player</th><th className="num">Pos</th><th className="hide-sm">Nationality</th><th className="num hide-sm">Age</th><th className="num">G</th><th className="num">A</th><th className="num hide-sm">YC</th>{onRemove && <th></th>}</tr></thead>
         <tbody>
           {squad.map((p) => {
             const t = totals.get(p.id)!;
@@ -195,9 +195,9 @@ function SquadTable({ teamId, captain, onRemove }: { teamId: string; captain?: U
               <tr key={p.id}>
                 <td className="num pts">{p.number}</td>
                 <td><Link to={`/players/${p.id}`} className="player-link">{p.name}</Link>{captain?.playerId === p.id && <span className="pill pill-gold" style={{ marginLeft: 6 }}>C</span>}</td>
-                <td className="num">{p.position}</td><td>{p.nationality}</td><td className="num">{p.age}</td>
-                <td className="num">{t.goals}</td><td className="num">{t.assists}</td><td className="num">{t.yellows}</td>
-                {onRemove && <td>{pend ? <span className="pill pill-warn">Removal pending</span> : captain?.playerId === p.id ? <span className="muted small">You</span> : <button className="btn btn-ghost btn-xs" onClick={() => onRemove(p)}>Request removal</button>}</td>}
+                <td className="num">{p.position}</td><td className="hide-sm">{p.nationality}</td><td className="num hide-sm">{p.age}</td>
+                <td className="num">{t.goals}</td><td className="num">{t.assists}</td><td className="num hide-sm">{t.yellows}</td>
+                {onRemove && <td>{pend ? <span className="pill pill-warn">Removal pending</span> : captain?.playerId === p.id ? <span className="muted small">You</span> : <button className="btn btn-ghost btn-xs" onClick={() => onRemove(p)}><span className="nm-full">Request removal</span><span className="nm-short" style={{ fontWeight: 600 }}>Remove</span></button>}</td>}
               </tr>
             );
           })}

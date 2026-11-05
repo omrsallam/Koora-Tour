@@ -34,21 +34,21 @@ export function StandingsTable({ compact = false, highlight }: { compact?: boole
         <thead>
           <tr>
             <th className="num">#</th><th>Club</th><th className="num">P</th>
-            {!compact && <><th className="num">W</th><th className="num">D</th><th className="num">L</th><th className="num">GF</th><th className="num">GA</th></>}
+            {!compact && <><th className="num">W</th><th className="num">D</th><th className="num">L</th><th className="num hide-sm">GF</th><th className="num hide-sm">GA</th></>}
             <th className="num">GD</th><th className="num">Pts</th>
-            {!compact && <th>Form</th>}
+            {!compact && <th className="hide-sm">Form</th>}
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.team.id} className={`${i < 4 ? 'q-final' : ''} ${highlight === r.team.id ? 'mine' : ''}`}>
               <td className="num pos">{i + 1}</td>
-              <td><Link to={`/teams/${r.team.id}`} className="team-cell"><Crest team={r.team} size={24} />{compact ? r.team.short : r.team.name}</Link></td>
+              <td><Link to={`/teams/${r.team.id}`} className="team-cell"><Crest team={r.team} size={24} />{compact ? r.team.short : <><span className="nm-full">{r.team.name}</span><span className="nm-short">{r.team.short}</span></>}</Link></td>
               <td className="num">{r.p}</td>
-              {!compact && <><td className="num">{r.w}</td><td className="num">{r.d}</td><td className="num">{r.l}</td><td className="num">{r.gf}</td><td className="num">{r.ga}</td></>}
+              {!compact && <><td className="num">{r.w}</td><td className="num">{r.d}</td><td className="num">{r.l}</td><td className="num hide-sm">{r.gf}</td><td className="num hide-sm">{r.ga}</td></>}
               <td className="num">{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
               <td className="num pts">{r.pts}</td>
-              {!compact && <td><div className="row" style={{ gap: 4 }}>{r.form.map((f, k) => <FormBadge key={k} r={f} />)}</div></td>}
+              {!compact && <td className="hide-sm"><div className="row" style={{ gap: 4 }}>{r.form.map((f, k) => <FormBadge key={k} r={f} />)}</div></td>}
             </tr>
           ))}
         </tbody>
@@ -116,7 +116,7 @@ export function FixtureRow({ m }: { m: Match }) {
   const nameOf = (t: Team | undefined, label?: string) => (t ? t.name : label ?? 'TBD');
   return (
     <Link to={`/matches/${m.id}`} className="fixture">
-      <div className="side home"><span>{nameOf(home, m.homeLabel)}</span><Crest team={home} label={m.homeLabel} size={30} /></div>
+      <div className="side home"><span className="nm-full">{nameOf(home, m.homeLabel)}</span><span className="nm-short">{home?.short ?? m.homeLabel}</span><Crest team={home} label={m.homeLabel} size={30} /></div>
       <div className="mid">
         {hasScore(m)
           ? <span className={`scorebox ${m.status === 'live' ? 'live' : ''}`}>{h} – {a}</span>
@@ -124,7 +124,7 @@ export function FixtureRow({ m }: { m: Match }) {
         {m.status === 'live' && <div className="small" style={{ color: 'var(--tulip)', fontWeight: 700 }}>{m.liveMinute ?? 0}'</div>}
         {m.status === 'awaiting_verification' && <div className="small" style={{ color: 'var(--warn)', fontWeight: 700 }}>Verifying</div>}
       </div>
-      <div className="side"><Crest team={away} label={m.awayLabel} size={30} /><span>{nameOf(away, m.awayLabel)}</span></div>
+      <div className="side"><Crest team={away} label={m.awayLabel} size={30} /><span className="nm-full">{nameOf(away, m.awayLabel)}</span><span className="nm-short">{away?.short ?? m.awayLabel}</span></div>
       <div className="meta">
         {L.venue(m.venueId)?.name}<br />
         {projected ? <span className="pill pill-gold">Projected</span> : roundLabel(m.stage, m.round)}

@@ -1,8 +1,9 @@
 import { C } from '../theme';
 
 /**
- * Istanbul skyline silhouette, left to right:
- * Hagia Sophia · Galata Tower on its islet · the Bosphorus Bridge with ferries · Çamlıca Tower on its hill.
+ * Istanbul skyline silhouette, in geographic order from west to east:
+ *   historic peninsula (Hagia Sophia) · Golden Horn (fishing boat) · Galata hill (Galata Tower) ·
+ *   Bosphorus Bridge — towers on both shores, ferries crossing below · Asian shore with Çamlıca hill and tower.
  *
  * Every shape is fully opaque so the background rings never show through, and windows are true
  * cut-outs (SVG masks). Drawn in a 1600×240 box (y from -40 to 200); the waterline sits at y=168.
@@ -99,10 +100,10 @@ function HagiaSophia({ x, scale }: { x: number; scale: number }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Galata Tower on its walled islet — reference 750×750 space         */
+/* Galata Tower with its old walls — reference 750×750 space           */
 /* ------------------------------------------------------------------ */
-function GalataTower({ x, scale }: { x: number; scale: number }) {
-  const ty = GROUND - 508 * scale;
+function GalataTower({ x, scale, base }: { x: number; scale: number; base: number }) {
+  const ty = base - 506 * scale;
   const crenels = (x0: number, x1: number, y: number) => {
     const out: string[] = [];
     for (let cx = x0; cx < x1 - 4; cx += 12) out.push(`M${cx} ${y} h7 v-8 h-7 Z`);
@@ -120,9 +121,7 @@ function GalataTower({ x, scale }: { x: number; scale: number }) {
         </mask>
       </defs>
       <g mask="url(#gt-cut)">
-        {/* rocky islet */}
-        <path d="M250 512 Q262 494 290 500 H545 Q566 498 572 512 Z" />
-        {/* crenellated walls */}
+        {/* remains of the Genoese walls around the tower */}
         <rect x={284} y={446} width={52} height={60} />
         <path d={crenels(284, 336, 446)} />
         <rect x={428} y={470} width={104} height={36} />
@@ -149,13 +148,13 @@ function GalataTower({ x, scale }: { x: number; scale: number }) {
 /* ------------------------------------------------------------------ */
 /* Bosphorus Bridge                                                    */
 /* ------------------------------------------------------------------ */
-const T1 = 850, T2 = 1210, TOP = 36, SAG = 186, DECK = 116;
+const T1 = 872, T2 = 1198, TOP = 36, SAG = 180, DECK = 116;
 const cableY = (x: number) => {
   const t = (x - T1) / (T2 - T1);
   return (1 - t) ** 2 * TOP + 2 * t * (1 - t) * SAG + t ** 2 * TOP;
 };
 function Bridge() {
-  const left = 740, right = 1320;
+  const left = 790, right = 1280;
   const mid = Array.from({ length: 13 }, (_, i) => T1 + ((i + 1) * (T2 - T1)) / 14);
   const side = (a: number, b: number) => Array.from({ length: 3 }, (_, i) => a + ((i + 1) * (b - a)) / 4);
   return (
@@ -246,6 +245,12 @@ const GULLS = [
   { x: 1300, y: 4, s: 0.8, d: '1.7s' }, { x: 1390, y: 40, s: 1.1, d: '0.8s' }, { x: 960, y: 66, s: 0.75, d: '2.2s' },
 ];
 
+// Shorelines (x positions in the 1600-wide drawing).
+const PENINSULA_END = 430;   // Golden Horn: 430–540
+const GALATA_START = 540;
+const EUROPE_END = 905;      // Bosphorus: 905–1165
+const ASIA_START = 1165;
+
 export default function Skyline() {
   return (
     <svg className="hero-skyline" viewBox="0 -40 1600 240" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
@@ -256,37 +261,39 @@ export default function Skyline() {
         </linearGradient>
       </defs>
 
-      {/* far layer: bridge and the Asian shore with Çamlıca */}
-      <Bridge />
+      {/* water first: the Golden Horn and the Bosphorus show between the shores */}
+      <rect x={0} y={GROUND - 2} width={1600} height={202 - GROUND} fill="url(#sky-water)" />
+      <g stroke="#ffffff" strokeOpacity="0.14" strokeWidth="1">
+        <path d={`M0 ${GROUND + 9} H1600`} strokeDasharray="30 18" />
+        <path d={`M20 ${GROUND + 18} H1600`} strokeDasharray="14 26" />
+      </g>
+
+      {/* far layer: Çamlıca hill and tower on the Asian side, behind the bridge */}
       <g fill={FAR}>
-        <path d={`M1360 ${GROUND} Q1420 144 1490 142 Q1560 142 1600 150 V${GROUND} Z`} />
+        <path d={`M1290 ${GROUND} Q1400 134 1490 132 Q1560 132 1600 140 V${GROUND} Z`} />
         <CamlicaTower x={1400} scale={0.122} />
       </g>
+      <Bridge />
 
-      {/* near layer: historic peninsula with Hagia Sophia */}
+      {/* boats on the water */}
+      <g fill={NEAR}><FishingBoat x={486} /></g>
+      <g fill={NEAR} className="sky-ferry"><Ferry x={985} /></g>
+      <g fill={NEAR} className="sky-ferry sky-ferry-2"><Ferry x={1090} flip /></g>
+
+      {/* near layer: the shores */}
       <g fill={NEAR}>
-        <path d={`M0 ${GROUND} V${GROUND - 8} H40 v-6 h26 v6 H130 V${GROUND - 4} H500 v-10 h22 v10 h30 V${GROUND} Z`} />
+        {/* historic peninsula */}
+        <path d={`M0 200 V${GROUND - 6} H40 v-5 h26 v5 H130 V${GROUND} H${PENINSULA_END - 12} Q${PENINSULA_END} ${GROUND} ${PENINSULA_END} ${GROUND + 6} V200 Z`} />
         <HagiaSophia x={150} scale={0.3} />
+        {/* Galata hill (European shore) rising to the tower, then down to the bridge anchor */}
+        <path d={`M${GALATA_START} 200 V${GROUND + 6} Q${GALATA_START} ${GROUND} ${GALATA_START + 14} ${GROUND - 2} Q600 154 650 152 Q720 152 780 160 Q850 166 ${EUROPE_END - 10} ${GROUND} Q${EUROPE_END} ${GROUND} ${EUROPE_END} ${GROUND + 6} V200 Z`} />
+        <path d="M566 162 v-10 h16 v-6 h14 v12 Z M690 154 v-12 h18 v8 h16 v-10 h14 v18 Z M752 158 v-8 h20 v-6 h12 v16 Z" />
+        <GalataTower x={526} scale={0.3} base={153} />
+        {/* Asian shore */}
+        <path d={`M${ASIA_START} 200 V${GROUND + 6} Q${ASIA_START} ${GROUND} ${ASIA_START + 10} ${GROUND} H1600 V200 Z`} />
       </g>
 
-      {/* the Bosphorus — opaque so the background rings stop at the waterline */}
-      <rect x={0} y={GROUND} width={1600} height={200 - GROUND} fill="url(#sky-water)" />
-      <g stroke="#ffffff" strokeOpacity="0.14" strokeWidth="1">
-        <path d={`M0 ${GROUND + 8} H1600`} strokeDasharray="30 18" />
-        <path d={`M20 ${GROUND + 17} H1600`} strokeDasharray="14 26" />
-      </g>
-
-      {/* Galata Tower on its islet, in front of the water */}
-      <g fill={NEAR}>
-        <GalataTower x={480} scale={0.33} />
-      </g>
-
-      {/* boats */}
-      <g fill={NEAR} className="sky-ferry"><Ferry x={1000} /></g>
-      <g fill={NEAR} className="sky-ferry sky-ferry-2"><Ferry x={1250} flip /></g>
-      <g fill={NEAR}><FishingBoat x={455} /></g>
-
-      {/* seagulls */}
+      {/* seagulls — only over the right half, clear of the hero text and buttons */}
       <g fill="none" stroke="#ffffff" strokeOpacity="0.8" strokeWidth="1.6" strokeLinecap="round">
         {GULLS.map((g) => (
           <g key={`${g.x}-${g.y}`} transform={`translate(${g.x} ${g.y}) scale(${g.s})`}>

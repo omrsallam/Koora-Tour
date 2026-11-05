@@ -76,15 +76,15 @@ export function Stats() {
               </div>
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>Player</th><th>Club</th><th className="num">Pos</th><th className="num">G</th><th className="num">A</th><th className="num">Pen</th><th className="num">CS</th><th className="num">YC</th><th className="num">RC</th></tr></thead>
+                  <thead><tr><th>Player</th><th>Club</th><th className="num">Pos</th><th className="num">G</th><th className="num">A</th><th className="num hide-sm">Pen</th><th className="num hide-sm">CS</th><th className="num hide-sm">YC</th><th className="num hide-sm">RC</th></tr></thead>
                   <tbody>
                     {totals.map((t) => (
                       <tr key={t.player.id}>
                         <td><Link to={`/players/${t.player.id}`} className="player-link">{t.player.name}</Link></td>
                         <td><span className="row"><Crest team={teamName(t.player.teamId)} size={20} />{teamName(t.player.teamId)?.short}</span></td>
                         <td className="num">{t.player.position}</td>
-                        <td className="num pts">{t.goals}</td><td className="num">{t.assists}</td><td className="num">{t.penalties}</td>
-                        <td className="num">{t.player.position === 'GK' ? t.cleanSheets : '–'}</td><td className="num">{t.yellows}</td><td className="num">{t.reds}</td>
+                        <td className="num pts">{t.goals}</td><td className="num">{t.assists}</td><td className="num hide-sm">{t.penalties}</td>
+                        <td className="num hide-sm">{t.player.position === 'GK' ? t.cleanSheets : '–'}</td><td className="num hide-sm">{t.yellows}</td><td className="num hide-sm">{t.reds}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -96,14 +96,14 @@ export function Stats() {
             <div className="card card-pad">
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>Club</th><th className="num">Goals</th><th className="num">Conceded</th><th className="num">Avg poss.</th><th className="num">Shots / game</th><th className="num">On target / game</th><th className="num">Clean sheets</th><th className="num">YC</th><th className="num">RC</th></tr></thead>
+                  <thead><tr><th>Club</th><th className="num">Goals</th><th className="num">Conceded</th><th className="num hide-sm">Avg poss.</th><th className="num hide-sm">Shots / game</th><th className="num hide-sm">On target / game</th><th className="num">CS</th><th className="num hide-sm">YC</th><th className="num hide-sm">RC</th></tr></thead>
                   <tbody>
                     {table.map((r) => {
                       const s = teamSeasonStats(db, r.team.id);
                       return (
                         <tr key={r.team.id}>
-                          <td><Link to={`/teams/${r.team.id}`} className="team-cell"><Crest team={r.team} size={22} />{r.team.name}</Link></td>
-                          <td className="num pts">{r.gf}</td><td className="num">{r.ga}</td><td className="num">{s.possession}%</td><td className="num">{s.shotsPerGame}</td><td className="num">{s.onTargetPerGame}</td><td className="num">{s.cleanSheets}</td><td className="num">{s.yellow}</td><td className="num">{s.red}</td>
+                          <td><Link to={`/teams/${r.team.id}`} className="team-cell"><Crest team={r.team} size={22} /><span className="nm-full">{r.team.name}</span><span className="nm-short">{r.team.short}</span></Link></td>
+                          <td className="num pts">{r.gf}</td><td className="num">{r.ga}</td><td className="num hide-sm">{s.possession}%</td><td className="num hide-sm">{s.shotsPerGame}</td><td className="num hide-sm">{s.onTargetPerGame}</td><td className="num">{s.cleanSheets}</td><td className="num hide-sm">{s.yellow}</td><td className="num hide-sm">{s.red}</td>
                         </tr>
                       );
                     })}
