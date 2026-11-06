@@ -71,7 +71,10 @@ main { flex: 1; }
 /* ---------- Header ---------- */
 .header { background: var(--blue-night); color: #fff; position: sticky; top: 0; z-index: 40; border-bottom: 3px solid var(--turq); }
 .header-inner { display: flex; align-items: center; height: 64px; gap: 20px; }
-.brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.brand { display: flex; align-items: center; gap: 10px; flex-shrink: 1; min-width: 0; }
+.brand-text { white-space: nowrap; overflow: hidden; }
+.brand-mark { flex-shrink: 0; }
+.header-actions { flex-shrink: 0; }
 .brand-mark { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, var(--red), var(--red-deep)); }
 .brand-text { font-family: var(--display); font-weight: 900; font-size: 1.55rem; letter-spacing: .04em; }
 .brand-text span { color: var(--gold); margin-left: 3px; }
