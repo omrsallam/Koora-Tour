@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, dashboardPath, ROLE_LABEL } from '../store/store';
-import { Avatar, Crest, Star8, Empty, MatchCard, FormBadge } from '../components/ui';
+import { Avatar, Crest, Star8, Empty, MatchCard, FormBadge, usePageTitle } from '../components/ui';
 import { PageHead } from '../components/blocks';
 import { standings, teamMatches } from '../data/derive';
 import type { Role } from '../types';
 import { NewsCard } from './News';
+import { isUpcoming, isOverdue } from '../data/rules';
 
 const ROLE_ORDER: Role[] = ['god', 'host', 'organizer', 'captain', 'player', 'fan'];
 const ROLE_COLOR: Record<Role, string> = { god: '#1cc4bf', host: '#1cc4bf', organizer: '#2a46d6', captain: '#e11d3c', player: '#6fe0dc', fan: '#c9cde0' };
 
 export default function Login() {
+  usePageTitle('Sign in');
   const { db, login, signupFan } = useStore();
   const nav = useNavigate();
   const [mode, setMode] = useState<'demo' | 'join'>('demo');
@@ -18,6 +20,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [fav, setFav] = useState('');
   const [filter, setFilter] = useState<Role | ''>('');
+  const [joinError, setJoinError] = useState('');
 
   const go = (id: string) => {
     login(id);
@@ -59,11 +62,17 @@ export default function Login() {
             </div>
           </>
         ) : (
-          <form onSubmit={(e) => { e.preventDefault(); if (!name.trim() || !email.trim()) return; signupFan(name.trim(), email.trim(), fav || undefined); nav('/my-koora'); }} className="stack">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!name.trim() || !email.trim()) return;
+            const r = signupFan(name.trim(), email.trim(), fav || undefined);
+            if (r.ok) nav('/my-koora'); else setJoinError(r.message);
+          }} className="stack">
+            {joinError && <div className="req-blocker" role="alert">{joinError}</div>}
             <h2>Create your fan account</h2>
             <p className="muted small">Fans can follow a club, get alerts and vote for Player of the Match. Only the God Admin can grant staff roles.</p>
             <label className="field">Full name<input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
-            <label className="field">Email<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
+            <label className="field">Email<input required type="email" value={email} onChange={(e) => { setEmail(e.target.value); setJoinError(''); }} autoComplete="email" /></label>
             <div className="field" style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '.82rem', fontWeight: 600 }}>
               Favourite club
               <div className="row wrap">
@@ -91,7 +100,7 @@ export function MyKoora() {
   const row = team && table.find((r) => r.team.id === team.id);
   const pos = team ? table.findIndex((r) => r.team.id === team.id) + 1 : 0;
   const ms = team ? teamMatches(db, team.id) : [];
-  const upcoming = ms.filter((m) => m.status !== 'finished').slice(0, 3);
+  const upcoming = ms.filter((m) => m.status === 'live' || isUpcoming(m) || isOverdue(m) || m.status === 'awaiting_verification').slice(0, 3);
   const recent = ms.filter((m) => m.status === 'finished').slice(-3).reverse();
   const news = db.news.filter((n) => team && n.teamIds.includes(team.id)).concat(db.news.filter((n) => !team || !n.teamIds.includes(team.id))).slice(0, 3);
   const votes = Object.keys(db.motmVotes[user.id] ?? {}).length;

@@ -5,6 +5,7 @@ import { useStore, useLookup } from '../../store/store';
 import { Crest, Empty, Modal, useFlash, Countdown, FormBadge, Avatar, StatusPill } from '../../components/ui';
 import { DashShell, RequireRole, RequestCard, DashTitle } from './shared';
 import { standings, teamMatches, playerTotals, score, resultFor } from '../../data/derive';
+import { isUpcoming, scheduleProblem } from '../../data/rules';
 import { downloadIcs, fmtDateTime, fmtTime, mapsEmbed, mapsUrl, roundLabel, toLocalInput } from '../../format';
 
 /* ---------------- Shared: schedule with locations ---------------- */
@@ -14,7 +15,7 @@ function Schedule({ teamId, captain, onRequest }: { teamId: string; captain?: bo
   const [openMap, setOpenMap] = useState<string | null>(null);
   const team = L.team(teamId)!;
   const upcoming = teamMatches(db, teamId).filter((m) => m.status !== 'finished');
-  const exportAll = () => downloadIcs(`${team.short}-schedule.ics`, upcoming.map((m) => {
+  const exportAll = () => downloadIcs(`${team.short}-schedule.ics`, upcoming.filter((m) => isUpcoming(m)).map((m) => {
     const v = L.venue(m.venueId)!;
     const opp = L.team(m.homeId === teamId ? m.awayId : m.homeId);
     return { uid: m.id, title: `${team.short} vs ${opp?.short ?? 'TBD'} (${m.homeId === teamId ? 'H' : 'A'})`, start: m.kickoff, durationMin: 120, location: `${v.name}, ${v.address}`, description: `Call time: ${fmtTime(new Date(new Date(m.kickoff).getTime() - 120 * 6e4).toISOString())}. ${v.transit}. ${v.parking}.` };
@@ -55,7 +56,7 @@ function Schedule({ teamId, captain, onRequest }: { teamId: string; captain?: bo
               <div className="stack" style={{ gap: 6 }}>
                 <a className="btn btn-ghost btn-xs" href={mapsUrl(`${v.name}, ${v.address}`)} target="_blank" rel="noreferrer">Directions</a>
                 <button className="btn btn-ghost btn-xs" onClick={() => setOpenMap(openMap === m.id ? null : m.id)}>{openMap === m.id ? 'Hide map' : 'Show map'}</button>
-                {captain && onRequest && m.status === 'scheduled' && !pendingReq && <button className="btn btn-gold btn-xs" onClick={() => onRequest(m)}>Request delay / time change</button>}
+                {captain && onRequest && isUpcoming(m) && !pendingReq && <button className="btn btn-gold btn-xs" onClick={() => onRequest(m)}>Request delay / time change</button>}
               </div>
             </div>
             {openMap === m.id && <iframe className="map-frame" style={{ marginBottom: 12 }} src={mapsEmbed(`${v.name} ${v.address}`)} title={`Map of ${v.name}`} loading="lazy" />}
@@ -69,7 +70,7 @@ function Schedule({ teamId, captain, onRequest }: { teamId: string; captain?: bo
 function NextMatchBanner({ teamId }: { teamId: string }) {
   const { db } = useStore();
   const L = useLookup();
-  const next = teamMatches(db, teamId).find((m) => m.status === 'scheduled' || m.status === 'live');
+  const next = teamMatches(db, teamId).find((m) => m.status === 'live' || isUpcoming(m));
   if (!next) return null;
   const opp = L.team(next.homeId === teamId ? next.awayId : next.homeId);
   const v = L.venue(next.venueId)!;
@@ -93,9 +94,11 @@ function RescheduleForm({ m, onClose, onDone }: { m: Match; onClose: () => void;
   const [delayH, setDelayH] = useState(1);
   const [when, setWhen] = useState(toLocalInput(m.kickoff));
   const [reason, setReason] = useState('');
-  const proposed = kind === 'delay' ? new Date(new Date(m.kickoff).getTime() + delayH * 36e5).toISOString() : new Date(when).toISOString();
+  const picked = new Date(when);
+  const proposed = kind === 'delay' ? new Date(new Date(m.kickoff).getTime() + delayH * 36e5).toISOString() : (isNaN(picked.getTime()) ? m.kickoff : picked.toISOString());
   const hoursLeft = (new Date(m.kickoff).getTime() - Date.now()) / 36e5;
   const tooLate = hoursLeft < db.settings.minRescheduleNoticeHours;
+  const problem = proposed !== m.kickoff ? scheduleProblem(db, m.id, proposed, undefined) : null;
   return (
     <Modal title="Request a schedule change" onClose={onClose}>
       <form className="stack" onSubmit={(e) => {
@@ -121,9 +124,10 @@ function RescheduleForm({ m, onClose, onDone }: { m: Match; onClose: () => void;
         )}
         <div className="req-diff"><span className="from">{fmtDateTime(m.kickoff)}</span>→<span className="to">{fmtDateTime(proposed)}</span></div>
         <label className="field">Reason<textarea required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explain why — organizers and the God Admin will review this." /></label>
+        {problem && !tooLate && <div className="req-blocker" role="alert">{problem}</div>}
         {tooLate && <div className="pill pill-danger" style={{ whiteSpace: 'normal' }}>Requests need at least {db.settings.minRescheduleNoticeHours}h notice. This match is too close to kickoff — contact the organizers directly.</div>}
         <div className="muted small">The opponent and hosts are notified only if the God Admin approves.</div>
-        <div className="form-actions"><button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button><button className="btn btn-primary btn-sm" disabled={tooLate || proposed === m.kickoff}>Send request</button></div>
+        <div className="form-actions"><button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button><button className="btn btn-primary btn-sm" disabled={tooLate || proposed === m.kickoff || !!problem}>Send request</button></div>
       </form>
     </Modal>
   );
@@ -373,7 +377,9 @@ function PlayerInner({ u }: { u: User }) {
           {teamNotices.length === 0 && <Empty>No notices for your team yet. Schedule changes and squad updates will appear here.</Empty>}
           <div className="card card-pad">
             {teamNotices.map((n) => (
-              <Link key={n.id} to={n.link ?? '#'} className="list-row"><span style={{ flex: 1 }}>{n.text}</span><span className="muted small">{fmtDateTime(n.at)}</span></Link>
+              n.link
+                ? <Link key={n.id} to={n.link} className="list-row"><span style={{ flex: 1 }}>{n.text}</span><span className="muted small">{fmtDateTime(n.at)}</span></Link>
+                : <div key={n.id} className="list-row"><span style={{ flex: 1 }}>{n.text}</span><span className="muted small">{fmtDateTime(n.at)}</span></div>
             ))}
           </div>
         </>

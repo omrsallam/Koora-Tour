@@ -7,6 +7,7 @@ import { CLUB_SWATCHES } from '../../theme';
 import { Crest, Empty, Modal, useFlash, StatusPill } from '../../components/ui';
 import { DashShell, RequireRole, RequestCard, DashTitle } from './shared';
 import { score } from '../../data/derive';
+import { kickOffState, scheduleProblem } from '../../data/rules';
 import { fmtDateTime, toLocalInput, roundLabel, timeAgo } from '../../format';
 
 export default function StaffDashboard() {
@@ -19,8 +20,8 @@ const EV_TYPES: { id: EventType; label: string }[] = [
   { id: 'yellow', label: '🟨 Yellow' }, { id: 'red', label: '🟥 Red' }, { id: 'sub', label: '⇄ Sub' },
 ];
 
-function MatchControl({ u, initial }: { u: User; initial?: string }) {
-  const { db, updateMatch, addEvent, removeEvent, submitResult } = useStore();
+function MatchControl({ u, initial, onMessage }: { u: User; initial?: string; onMessage: (ok: boolean, msg: string) => void }) {
+  const { db, updateMatch, addEvent, removeEvent, submitResult, kickOff } = useStore();
   const L = useLookup();
   const mine = db.matches.filter((m) => canRunMatch(u, m) && m.homeId && m.status !== 'finished').sort((a, b) => a.kickoff.localeCompare(b.kickoff));
   const [matchId, setMatchId] = useState(initial && mine.some((m) => m.id === initial) ? initial : mine[0]?.id ?? '');
@@ -49,6 +50,7 @@ function MatchControl({ u, initial }: { u: User; initial?: string }) {
   const [h, a] = score(m);
   const squad = db.players.filter((p) => p.teamId === teamId && p.active).sort((x, y) => x.number - y.number);
   const locked = m.status === 'awaiting_verification';
+  const ko = kickOffState(m);
   const statRow = (k: keyof MatchStats, label: string) => (
     <div className="row" key={k} style={{ gap: 6 }}>
       <input type="number" min={0} value={stats[k][0]} onChange={(e) => setStats({ ...stats, [k]: k === 'possession' ? [Number(e.target.value), 100 - Number(e.target.value)] : [Number(e.target.value), stats[k][1]] })} style={{ width: 70 }} aria-label={`${home.short} ${label}`} />
@@ -73,8 +75,12 @@ function MatchControl({ u, initial }: { u: User; initial?: string }) {
           <div className="side"><Crest team={away} size={54} /><b>{away.name}</b></div>
         </div>
         <div className="row wrap" style={{ justifyContent: 'center' }}>
-          {m.status === 'scheduled' || m.status === 'postponed' ? (
-            <button className="btn btn-red" onClick={() => updateMatch(m.id, { status: 'live', liveMinute: 1 }, 'kick-off')}>▶ Kick off</button>
+          {m.status === 'postponed' ? (
+            <span className="pill pill-danger">Postponed — the God Admin must reschedule it first</span>
+          ) : m.status === 'scheduled' ? (
+            ko.ok
+              ? <button className="btn btn-red" onClick={() => { const r = kickOff(m.id); onMessage(r.ok, r.message); }}>▶ Kick off</button>
+              : <span className="pill pill-ghost" style={{ background: 'rgba(255,255,255,.12)', color: '#fff', whiteSpace: 'normal' }}>Kick-off opens 1 hour before the scheduled time · {fmtDateTime(ko.opensAt)}</span>
           ) : m.status === 'live' ? (
             <>
               <label className="row small" style={{ color: '#fff' }}>Clock
@@ -155,7 +161,16 @@ function MatchControl({ u, initial }: { u: User; initial?: string }) {
             <h3>Final whistle</h3>
             <p className="muted small">Submitting sends the score and timeline to the God Admin. The result only counts in the table once verified. If rejected, the match returns to live so you can correct it.</p>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notes for the God Admin (incidents, attendance, VAR…)" />
-            <div className="form-actions"><button className="btn btn-red" disabled={locked} onClick={() => { updateMatch(m.id, { stats }); submitResult(m.id, note); setNote(''); }}>■ Submit {h}–{a} for verification</button></div>
+            {m.stage !== 'league' && h === a && (
+              <label className="field" style={{ marginTop: 10 }}>Knockout tie — who won the penalty shoot-out?
+                <select value={m.shootoutWinner ?? ''} onChange={(e) => updateMatch(m.id, { shootoutWinner: e.target.value || undefined })}>
+                  <option value="">Select the winner…</option>
+                  <option value={home.id}>{home.name}</option>
+                  <option value={away.id}>{away.name}</option>
+                </select>
+              </label>
+            )}
+            <div className="form-actions"><button className="btn btn-red" disabled={locked || (m.stage !== 'league' && h === a && !m.shootoutWinner)} onClick={() => { updateMatch(m.id, { stats }); const r = submitResult(m.id, note); onMessage(r.ok, r.message); if (r.ok) setNote(''); }}>■ Submit {h}–{a}{m.stage !== 'league' && h === a && m.shootoutWinner ? ` (${L.team(m.shootoutWinner)?.short} on pens)` : ''} for verification</button></div>
           </div>
         </div>
       )}
@@ -170,11 +185,13 @@ function FixtureProposal({ m, onClose, onDone }: { m: Match; onClose: () => void
   const [kickoff, setKickoff] = useState(toLocalInput(m.kickoff));
   const [venueId, setVenueId] = useState(m.venueId);
   const [reason, setReason] = useState('');
+  const isoNow = kickoff && !isNaN(new Date(kickoff).getTime()) ? new Date(kickoff).toISOString() : m.kickoff;
+  const problem = (isoNow !== m.kickoff || venueId !== m.venueId) ? scheduleProblem(db, m.id, isoNow !== m.kickoff ? isoNow : undefined, venueId) : null;
   return (
     <Modal title={`Propose change: ${L.team(m.homeId)?.name ?? m.homeLabel} vs ${L.team(m.awayId)?.name ?? m.awayLabel}`} onClose={onClose}>
       <form className="stack" onSubmit={(e) => {
         e.preventDefault();
-        const iso = new Date(kickoff).toISOString();
+        const iso = isoNow;
         const r = submitRequest({ type: 'fixture_change', matchId: m.id, reason, payload: { proposedKickoff: iso !== m.kickoff ? iso : undefined, proposedVenueId: venueId !== m.venueId ? venueId : undefined } });
         onDone(r.ok, r.message);
         if (r.ok) onClose();
@@ -183,9 +200,10 @@ function FixtureProposal({ m, onClose, onDone }: { m: Match; onClose: () => void
           <label className="field">New kickoff<input type="datetime-local" value={kickoff} onChange={(e) => setKickoff(e.target.value)} /></label>
           <label className="field">Venue<select value={venueId} onChange={(e) => setVenueId(e.target.value)}>{db.venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
         </div>
+        {problem && <div className="req-blocker" role="alert">{problem}</div>}
         <label className="field">Reason<textarea required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Pitch maintenance, broadcast slot, security advice…" /></label>
         <div className="muted small">Changes are sensitive: this goes to the God Admin and only applies after approval.</div>
-        <div className="form-actions"><button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button><button className="btn btn-primary btn-sm" disabled={toLocalInput(m.kickoff) === kickoff && venueId === m.venueId}>Send to God Admin</button></div>
+        <div className="form-actions"><button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button><button className="btn btn-primary btn-sm" disabled={(toLocalInput(m.kickoff) === kickoff && venueId === m.venueId) || !!problem}>Send to God Admin</button></div>
       </form>
     </Modal>
   );
@@ -393,7 +411,7 @@ function StaffInner({ u }: { u: User }) {
       {section === 'matchday' && can.matchday && (
         <>
           <DashTitle kicker="Live operations" title="Match-day control" />
-          <MatchControl u={u} initial={params.get('match') ?? undefined} />
+          <MatchControl u={u} initial={params.get('match') ?? undefined} onMessage={flash} />
         </>
       )}
 

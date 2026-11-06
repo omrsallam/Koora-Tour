@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { Match, MatchEvent } from '../types';
 import { useStore, useLookup, canRunMatch } from '../store/store';
-import { Crest, Empty, StatusPill, Countdown, Avatar, StadiumIcon } from '../components/ui';
+import { Crest, Empty, StatusPill, Countdown, Avatar, StadiumIcon, usePageTitle } from '../components/ui';
 import { PageHead, FixtureRow } from '../components/blocks';
+import { isUpcoming, isOverdue, motmOpen, motmClosesAt, winnerOf } from '../data/rules';
 import { score, hasScore, resolveSlot, teamMatches, resultFor } from '../data/derive';
 import { C } from '../theme';
-import { fmtDate, fmtLong, fmtTime, mapsEmbed, mapsUrl, roundLabel, downloadIcs } from '../format';
+import { fmtDate, fmtDateTime, fmtLong, fmtTime, mapsEmbed, mapsUrl, roundLabel, downloadIcs } from '../format';
 
 export default function Matches() {
   const { db, user } = useStore();
@@ -81,6 +82,8 @@ export function MatchDetail() {
   const L = useLookup();
   const [tab, setTab] = useState<'overview' | 'stats' | 'squads' | 'venue'>('overview');
   const m = db.matches.find((x) => x.id === id);
+  const tl = (tid: string | null | undefined, lbl?: string) => db.teams.find((x) => x.id === tid)?.name ?? lbl ?? 'TBD';
+  usePageTitle(m ? `${tl(m.homeId ?? resolveSlot(db, m, 'home'), m.homeLabel)} vs ${tl(m.awayId ?? resolveSlot(db, m, 'away'), m.awayLabel)}` : 'Match not found');
   if (!m) return <section className="section"><div className="container"><Empty>Match not found.</Empty></div></section>;
 
   const homeId = resolveSlot(db, m, 'home');
@@ -100,6 +103,7 @@ export function MatchDetail() {
   const tally = new Map<string, number>();
   votes.forEach((p) => tally.set(p, (tally.get(p) ?? 0) + 1));
   const myVote = user ? db.motmVotes[user.id]?.[m.id] : undefined;
+  const votingOpen = motmOpen(m);
   const candidates = [...new Set(m.events.filter((e) => e.type === 'goal' || e.type === 'penalty').flatMap((e) => [e.playerId, e.assistId]).filter(Boolean) as string[])];
   if (candidates.length < 4) {
     db.players.filter((p) => p.active && (p.teamId === m.homeId || p.teamId === m.awayId) && (p.position === 'GK' || p.position === 'MF')).slice(0, 4 - candidates.length).forEach((p) => candidates.push(p.id));
@@ -120,17 +124,19 @@ export function MatchDetail() {
             {hasScore(m) ? <div className="sc">{h} – {a}</div> : <div className="ko">{fmtTime(m.kickoff)}</div>}
             <div className="side"><Crest team={away} label={m.awayLabel} size={92} />{away ? <Link to={`/teams/${away.id}`}>{away.name}</Link> : <span>{m.awayLabel}</span>}</div>
           </div>
+          {m.stage !== 'league' && m.status === 'finished' && h === a && winnerOf(m) && <div className="overdue-note" style={{ marginTop: 0, marginBottom: 12 }}>{L.team(winnerOf(m))?.name} win on penalties</div>}
           {hasScore(m) && goals.length > 0 && (
             <div className="mc-scorers"><div>{scorersFor(m.homeId).join(', ')}</div><div>{scorersFor(m.awayId).join(', ')}</div></div>
           )}
-          {m.status === 'scheduled' && <div style={{ maxWidth: 380, margin: '10px auto 0' }}><Countdown to={m.kickoff} /></div>}
+          {isUpcoming(m) && <div style={{ maxWidth: 380, margin: '10px auto 0' }}><Countdown to={m.kickoff} /></div>}
+          {isOverdue(m) && <div className="overdue-note">Kickoff time has passed — waiting for the host to start the match or enter the result.</div>}
           <div className="row wrap" style={{ justifyContent: 'center', marginTop: 20, gap: 10 }}>
             <span className="small muted-light venue-inline"><StadiumIcon size={15} />{venue.name}, {venue.city}</span>
             <span className="small muted-light">· Referee {m.referee}</span>
             {m.attendance && <span className="small muted-light">· Attendance {m.attendance.toLocaleString()}</span>}
           </div>
           <div className="row wrap" style={{ justifyContent: 'center', marginTop: 16 }}>
-            {m.status === 'scheduled' && home && away && (
+            {isUpcoming(m) && home && away && (
               <button className="btn btn-ghost-light btn-sm" onClick={() => downloadIcs(`${home.short}-${away.short}.ics`, [{ uid: m.id, title: `${home.name} vs ${away.name}`, start: m.kickoff, durationMin: 120, location: `${venue.name}, ${venue.address}` }])}>+ Add to calendar</button>
             )}
             {canRunMatch(user, m) && <Link to={`/dashboard/staff?match=${m.id}`} className="btn btn-gold btn-sm">Open match control</Link>}
@@ -180,7 +186,11 @@ export function MatchDetail() {
                 {m.status === 'finished' && home && away && (
                   <div className="card card-pad">
                     <h3>Player of the Match</h3>
-                    <p className="muted small">{user ? (myVote ? 'Thanks for voting! You can change your pick.' : 'Cast your vote.') : <><Link to="/login" className="link-btn">Sign in</Link> to vote.</>}</p>
+
+                    <p className="muted small">{!votingOpen
+                      ? <>Voting closed {fmtDateTime(motmClosesAt(m))}. Final result below.</>
+                      : user ? (myVote ? <>Thanks for voting! You can change your pick until {fmtDateTime(motmClosesAt(m))}.</> : <>Voting is open until {fmtDateTime(motmClosesAt(m))}.</>)
+                      : <><Link to="/login" className="link-btn">Sign in</Link> to vote — open until {fmtDateTime(motmClosesAt(m))}.</>}</p>
                     <div className="stack" style={{ gap: 8 }}>
                       {candidates.slice(0, 6).map((pid) => {
                         const p = L.player(pid);
@@ -188,7 +198,7 @@ export function MatchDetail() {
                         const n = tally.get(pid) ?? 0;
                         const pct = votes.length ? Math.round((n / votes.length) * 100) : 0;
                         return (
-                          <button key={pid} disabled={!user} onClick={() => vote(m.id, pid)} className="demo-account" style={{ borderColor: myVote === pid ? 'var(--turq)' : undefined, position: 'relative', overflow: 'hidden' }}>
+                          <button key={pid} disabled={!user || !votingOpen || user.playerId === pid} title={user?.playerId === pid ? 'You can\'t vote for yourself' : undefined} onClick={() => vote(m.id, pid)} className="demo-account" style={{ borderColor: myVote === pid ? 'var(--turq)' : undefined, position: 'relative', overflow: 'hidden' }}>
                             <span style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'rgba(31,181,176,.12)' }} />
                             <Crest team={L.team(p.teamId)} size={22} />
                             <span style={{ position: 'relative', flex: 1 }}><b>{p.name}</b><small>{p.position} · #{p.number}</small></span>

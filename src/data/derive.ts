@@ -40,6 +40,12 @@ export function standings(db: DB): Row[] {
   return list.sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.gf - x.gf || x.team.name.localeCompare(y.team.name));
 }
 
+/** Players registered with `teamId` at `when`. */
+export function registeredFor(db: DB, teamId: string | null, when: string) {
+  const t = new Date(when).getTime();
+  return db.players.filter((p) => p.teamId === teamId && new Date(p.joinedAt).getTime() <= t && (!p.removedAt || new Date(p.removedAt).getTime() > t) && (p.active || !!p.removedAt));
+}
+
 export interface PlayerTotals {
   player: Player;
   goals: number; assists: number; penalties: number; yellows: number; reds: number;
@@ -62,10 +68,12 @@ export function playerTotals(db: DB): Map<string, PlayerTotals> {
     const [h, a] = score(m);
     [m.homeId, m.awayId].forEach((teamId, idx) => {
       const conceded = idx === 0 ? a : h;
-      const squad = db.players.filter((p) => p.teamId === teamId && p.active);
-      // Appearances: a simple model — every active squad member is credited (no lineup data in this prototype).
+      // Appearances: everyone who was registered with the club on the day of the match
+      // (no line-up data yet). New signings don't get credit for earlier games; removed players keep theirs.
+      const squad = registeredFor(db, teamId, m.kickoff);
       squad.forEach((p) => { map.get(p.id)!.apps++; });
-      const keeper = squad.find((p) => p.position === 'GK');
+      // Clean sheet goes to the club's first-choice keeper on the day (lowest shirt number).
+      const keeper = squad.filter((p) => p.position === 'GK').sort((x, y) => x.number - y.number)[0];
       if (keeper && conceded === 0) map.get(keeper.id)!.cleanSheets++;
     });
   }

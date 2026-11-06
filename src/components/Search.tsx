@@ -25,7 +25,7 @@ export default function Search() {
     if (s.length < 2) return [];
     const teams = db.teams.filter((t) => t.name.toLowerCase().includes(s) || t.short.toLowerCase() === s).map((t) => ({ key: t.id, label: t.name, sub: 'Club', to: `/teams/${t.id}`, team: t }));
     const players = db.players.filter((p) => p.active && p.name.toLowerCase().includes(s)).slice(0, 8).map((p) => ({ key: p.id, label: p.name, sub: `${p.position} · ${db.teams.find((t) => t.id === p.teamId)?.name}`, to: `/players/${p.id}`, team: db.teams.find((t) => t.id === p.teamId) }));
-    const venues = db.venues.filter((v) => v.name.toLowerCase().includes(s)).map((v) => ({ key: v.id, label: v.name, sub: `Venue · ${v.city}`, to: '/venues', team: undefined }));
+    const venues = db.venues.filter((v) => v.name.toLowerCase().includes(s)).map((v) => ({ key: v.id, label: v.name, sub: `Venue · ${v.city}`, to: `/venues?venue=${v.id}`, team: undefined }));
     return [...teams, ...players, ...venues];
   }, [q, db]);
 

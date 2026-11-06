@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import type { ApprovalRequest, Role, User } from '../../types';
 import { useStore, useLookup, ROLE_LABEL } from '../../store/store';
-import { Avatar, Crest } from '../../components/ui';
+import { Avatar, Crest, usePageTitle } from '../../components/ui';
 import { fmtDateTime, timeAgo } from '../../format';
 import { score } from '../../data/derive';
 
@@ -10,6 +10,7 @@ export interface DashSection { id: string; label: string; icon: string; badge?: 
 
 export function DashShell({ sections, active, onSelect, children, accent = '#1cc4bf' }: { sections: DashSection[]; active: string; onSelect: (id: string) => void; children: ReactNode; accent?: string }) {
   const { user } = useStore();
+  usePageTitle(`${sections.find((s) => s.id === active)?.label ?? 'Dashboard'} · Dashboard`);
   let lastGroup: string | undefined;
   return (
     <div className="dash">
@@ -119,14 +120,18 @@ export function RequestCard({ r, actions, showRecommend }: { r: ApprovalRequest;
   );
 }
 
-export function DecisionBar({ onDecide, approveLabel = 'Approve', placeholder = 'Note for the requester (optional)' }: { onDecide: (approve: boolean, note: string) => void; approveLabel?: string; placeholder?: string }) {
+export function DecisionBar({ onDecide, approveLabel = 'Approve', placeholder = 'Note for the requester (optional)', blocker, warning }: { onDecide: (approve: boolean, note: string) => void; approveLabel?: string; placeholder?: string; blocker?: string | null; warning?: string | null }) {
   const [note, setNote] = useState('');
   return (
-    <div className="row wrap">
-      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={placeholder} style={{ flex: 1, minWidth: 200 }} aria-label="Decision note" />
-      <button className="btn btn-ok btn-sm" onClick={() => onDecide(true, note)}>✓ {approveLabel}</button>
-      <button className="btn btn-red btn-sm" onClick={() => onDecide(false, note)}>✕ Reject</button>
-    </div>
+    <>
+      <div className="row wrap">
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={placeholder} style={{ flex: 1, minWidth: 200 }} aria-label="Decision note" />
+        <button className="btn btn-ok btn-sm" onClick={() => onDecide(true, note)} disabled={!!blocker} title={blocker ?? undefined}>✓ {approveLabel}</button>
+        <button className="btn btn-red btn-sm" onClick={() => onDecide(false, note)}>✕ Reject</button>
+      </div>
+      {blocker && <div className="req-blocker" role="note">Can't approve: {blocker}</div>}
+      {!blocker && warning && <div className="req-warning" role="note">Heads up: {warning}</div>}
+    </>
   );
 }
 

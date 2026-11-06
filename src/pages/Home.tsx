@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, useLookup, dashboardPath } from '../store/store';
-import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8, Avatar } from '../components/ui';
+import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8, Avatar, usePageTitle } from '../components/ui';
 import { C, G } from '../theme';
 import Skyline from '../components/Skyline';
 import AutoRail from '../components/AutoRail';
+import { isUpcoming } from '../data/rules';
 import type { Highlight, Match } from '../types';
 import { score } from '../data/derive';
 import { compact, timeAgo } from '../format';
@@ -40,7 +41,7 @@ function YourClub() {
   const table = standings(db);
   const pos = table.findIndex((r) => r.team.id === team.id);
   const row = table[pos];
-  const next = teamMatches(db, team.id).find((m) => m.status === 'scheduled' || m.status === 'live');
+  const next = teamMatches(db, team.id).find((m) => m.status === 'live' || isUpcoming(m));
   const opp = next && L.team(next.homeId === team.id ? next.awayId : next.homeId);
   return (
     <section className="section-tight">
@@ -95,7 +96,7 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
   }));
   const latest = weeks[weeks.length - 1]?.matches ?? [];
 
-  // Feature circles, UCL-style: Goal of the Week, Player of the Week, Top of the Table, Next up.
+  // Feature circles, UCL-style: Match of the Week (highest-scoring game), Player of the Week, Top of the Table, Next up.
   const goalsIn = (m: Match) => score(m)[0] + score(m)[1];
   const gotwMatch = [...latest].sort((x, y) => goalsIn(y) - goalsIn(x))[0];
   const gotw = gotwMatch && db.highlights.find((h) => h.matchId === gotwMatch.id);
@@ -106,14 +107,14 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
   }));
   const potw = L.player([...contrib.entries()].sort((x, y) => y[1] - x[1])[0]?.[0]);
   const leader = standings(db)[0];
-  const nextUp = db.matches.filter((m) => m.status === 'scheduled' && m.homeId).sort((x, y) => x.kickoff.localeCompare(y.kickoff))[0];
+  const nextUp = db.matches.filter((m) => isUpcoming(m) && m.homeId).sort((x, y) => x.kickoff.localeCompare(y.kickoff))[0];
 
   type Entry = { key: string; label: ReactNode; aria: string; disc: ReactNode; feature?: boolean; onClick?: () => void; to?: string } | { key: string; divider: string };
   const entries: Entry[] = [];
   if (gotwMatch) entries.push({
-    key: 'gotw', feature: true, aria: 'Goal of the Week',
-    disc: <span className="story-word">GOAL<small>of the</small>WEEK</span>,
-    label: <>Goal of the Week<small>{L.team(gotwMatch.homeId)?.short} v {L.team(gotwMatch.awayId)?.short}</small></>,
+    key: 'gotw', feature: true, aria: 'Match of the Week — the highest-scoring game of the matchday',
+    disc: <span className="story-word">MATCH<small>of the</small>WEEK</span>,
+    label: <>Match of the Week<small>{L.team(gotwMatch.homeId)?.short} v {L.team(gotwMatch.awayId)?.short}</small></>,
     ...(gotw ? { onClick: () => onOpen(gotw) } : { to: `/matches/${gotwMatch.id}` }),
   });
   if (potw) entries.push({
@@ -154,7 +155,7 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
   return (
     <div className="stories-section">
       <div className="container">
-        {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>This week on the tour · Matchdays {weeks[0].round}–{lastRound}</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
+        {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>Latest on the tour · Matchdays {weeks[0].round}–{lastRound}</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
         <div onMouseEnter={() => setSpotPaused(true)} onMouseLeave={() => setSpotPaused(false)} onFocusCapture={() => setSpotPaused(true)} onBlurCapture={() => setSpotPaused(false)}>
         <AutoRail label="Latest on the tour" tone="dark" interval={2400}>
           {entries.map((e, idx) => {
@@ -215,11 +216,12 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
 }
 
 export default function Home() {
+  usePageTitle();
   const { db, user } = useStore();
   const L = useLookup();
   const { open, modal } = useHighlightPlayer();
   const league = db.matches.filter((m) => m.stage === 'league');
-  const upcoming = db.matches.filter((m) => m.status === 'scheduled' && m.homeId).sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+  const upcoming = db.matches.filter((m) => isUpcoming(m) && m.homeId).sort((a, b) => a.kickoff.localeCompare(b.kickoff));
   const live = db.matches.filter((m) => m.status === 'live');
   const next = live[0] ?? upcoming[0];
   const lastRound = Math.max(0, ...league.filter((m) => m.status === 'finished').map((m) => m.round));

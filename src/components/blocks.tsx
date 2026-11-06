@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import type { Match, Team } from '../types';
 import { useLookup, useStore } from '../store/store';
 import { standings, score, hasScore, leaders, type LeaderKey, resolveSlot } from '../data/derive';
-import { Crest, FormBadge, Avatar, StadiumIcon } from './ui';
+import { Crest, FormBadge, Avatar, StadiumIcon, usePageTitle } from './ui';
 import { G } from '../theme';
 import { fmtTime, roundLabel } from '../format';
 
 export function PageHead({ kicker, title, sub, children }: { kicker?: string; title: string; sub?: string; children?: ReactNode }) {
+  usePageTitle(title);
   return (
     <>
       <section className="page-head">
@@ -120,7 +121,9 @@ export function FixtureRow({ m }: { m: Match }) {
       <div className="mid">
         {hasScore(m)
           ? <span className={`scorebox ${m.status === 'live' ? 'live' : ''}`}>{h} – {a}</span>
-          : m.status === 'postponed' ? <span className="pill pill-danger">PPD</span> : <span className="timebox">{fmtTime(m.kickoff)}</span>}
+          : m.status === 'postponed' ? <span className="pill pill-danger">PPD</span>
+          : new Date(m.kickoff).getTime() <= Date.now() ? <span className="pill pill-warn">Awaiting result</span>
+          : <span className="timebox">{fmtTime(m.kickoff)}</span>}
         {m.status === 'live' && <div className="small" style={{ color: 'var(--tulip)', fontWeight: 700 }}>{m.liveMinute ?? 0}'</div>}
         {m.status === 'awaiting_verification' && <div className="small" style={{ color: 'var(--warn)', fontWeight: 700 }}>Verifying</div>}
       </div>
@@ -157,7 +160,7 @@ export function Bracket() {
       {fin && (
         <Link to={`/matches/${fin.id}`} className="bracket-match bracket-final">
           <div className="lbl"><span>🏆 The Final</span><span className="venue-inline"><StadiumIcon size={12} />{L.venue(fin.venueId)?.name}</span></div>
-          <div className="tm">Winner SF1</div><div className="tm">Winner SF2</div>
+          {fin.homeId ? <>{side(fin, 'home')}{side(fin, 'away')}</> : <><div className="tm">Winner SF1</div><div className="tm">Winner SF2</div></>}
         </Link>
       )}
     </div>

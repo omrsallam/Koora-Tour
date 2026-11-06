@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { ApprovalRequest, DB, Match, MatchEvent, NewsItem, Highlight, Privilege, Role, User, Venue, Team, Settings, Notice } from '../types';
 import { createSeed, DB_VERSION } from '../data/seed';
 import { score } from '../data/derive';
+import { approvalBlocker, scheduleProblem, kickOffState, motmOpen, advanceKnockouts } from '../data/rules';
 
 const DB_KEY = 'koora-tour-db';
 const USER_KEY = 'koora-tour-user';
@@ -19,6 +20,14 @@ function load(): DB {
 
 let idCounter = 0;
 export const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}${(idCounter++).toString(36)}`;
+
+/** Email must look valid and not already belong to someone. */
+export function emailProblem(db: DB, email: string): string | null {
+  const e = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return 'Enter a valid email address.';
+  if (db.users.some((u) => u.email.toLowerCase() === e)) return 'An account with this email already exists.';
+  return null;
+}
 
 export type Result = { ok: true; message: string } | { ok: false; message: string };
 
@@ -62,7 +71,7 @@ interface Store {
   user: User | null;
   login: (userId: string) => void;
   logout: () => void;
-  signupFan: (name: string, email: string, favoriteTeamId?: string) => void;
+  signupFan: (name: string, email: string, favoriteTeamId?: string) => Result;
   setFavorite: (teamId: string | undefined) => void;
 
   submitRequest: (r: Omit<ApprovalRequest, 'id' | 'status' | 'createdBy' | 'createdAt' | 'recommendations'>) => Result;
@@ -70,13 +79,16 @@ interface Store {
   recommend: (id: string, verdict: 'support' | 'oppose', note: string) => void;
   decide: (id: string, approve: boolean, note: string) => Result;
 
-  createUser: (u: Omit<User, 'id' | 'createdAt'>) => void;
+  createUser: (u: Omit<User, 'id' | 'createdAt'>) => Result;
   updateUser: (id: string, patch: Partial<User>) => void;
 
   updateMatch: (id: string, patch: Partial<Match>, auditText?: string) => void;
+  /** God Admin override of kickoff / venue / referee / postponement, with clash checks. */
+  editFixture: (id: string, patch: Pick<Match, 'kickoff' | 'venueId' | 'referee'> & { postponed: boolean }) => Result;
+  kickOff: (id: string) => Result;
   addEvent: (matchId: string, e: Omit<MatchEvent, 'id'>) => void;
   removeEvent: (matchId: string, eventId: string) => void;
-  submitResult: (matchId: string, note: string) => void;
+  submitResult: (matchId: string, note: string) => Result;
 
   saveNews: (n: Omit<NewsItem, 'id' | 'date' | 'authorId'> & { id?: string }) => void;
   deleteNews: (id: string) => void;
@@ -87,6 +99,7 @@ interface Store {
   updateSettings: (patch: Partial<Settings>) => void;
 
   vote: (matchId: string, playerId: string) => void;
+  viewHighlight: (id: string) => void;
   markRead: () => void;
   noticesFor: (u: User | null) => Notice[];
   resetDemo: () => void;
@@ -137,11 +150,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     login: (id) => setUserId(id),
     logout: () => setUserId(null),
     signupFan: (name, email, favoriteTeamId) => {
+      const problem = emailProblem(db, email);
+      if (problem) return { ok: false, message: problem };
       const id = uid('u');
       mutate((d) => {
-        d.users.push({ id, name, email, role: 'fan', privileges: [], favoriteTeamId, createdAt: new Date().toISOString() });
+        d.users.push({ id, name: name.trim(), email: email.trim().toLowerCase(), role: 'fan', privileges: [], favoriteTeamId, createdAt: new Date().toISOString() });
       });
       setUserId(id);
+      return { ok: true, message: 'Welcome to Koora Tour!' };
     },
     setFavorite: (teamId) => {
       if (!user) return;
@@ -168,6 +184,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (db.requests.some((x) => x.type === 'reschedule' && x.status === 'pending' && x.matchId === r.matchId)) {
           return { ok: false, message: 'There is already a pending reschedule request for this match.' };
         }
+      }
+      if ((r.type === 'reschedule' || r.type === 'fixture_change') && r.matchId) {
+        if (!r.payload.proposedKickoff && !r.payload.proposedVenueId) return { ok: false, message: 'Nothing would change — pick a new time or venue.' };
+        if (r.type === 'fixture_change' && db.requests.some((x) => x.type === 'fixture_change' && x.status === 'pending' && x.matchId === r.matchId)) {
+          return { ok: false, message: 'There is already a pending fixture change for this match.' };
+        }
+        const problem = scheduleProblem(db, r.matchId, r.payload.proposedKickoff, r.payload.proposedVenueId);
+        if (problem) return { ok: false, message: problem };
       }
       if (r.type === 'remove_player' && db.requests.some((x) => x.type === 'remove_player' && x.status === 'pending' && x.payload.playerId === r.payload.playerId)) {
         return { ok: false, message: 'A removal request for this player is already pending.' };
@@ -207,8 +231,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (user?.role !== 'god') return { ok: false, message: 'Only the God Admin can decide.' };
       const r0 = db.requests.find((x) => x.id === id);
       if (!r0 || r0.status !== 'pending') return { ok: false, message: 'Request is no longer pending.' };
-      if (approve && r0.type === 'add_player' && db.players.some((p) => p.teamId === r0.teamId && p.active && p.number === r0.payload.player?.number)) {
-        return { ok: false, message: `Shirt #${r0.payload.player?.number} has since been taken — reject or ask the captain to resubmit.` };
+      if (approve) {
+        const blocker = approvalBlocker(db, r0);
+        if (blocker) return { ok: false, message: blocker };
       }
       mutate((d) => {
         const r = d.requests.find((x) => x.id === id)!;
@@ -237,6 +262,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           summary = `Remove ${p?.name} from ${teamName(d, r.teamId)}`;
           if (approve && p) {
             p.active = false;
+            p.removedAt = new Date().toISOString();
             const linked = d.users.find((u) => u.playerId === p.id);
             if (linked && linked.role === 'player') { linked.role = 'fan'; linked.teamId = undefined; }
           }
@@ -244,7 +270,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const [h, a] = score(m);
           summary = `Final score ${matchLabel(d, m)} ${h}–${a}`;
           m.status = approve ? 'finished' : 'live';
-          if (approve) notify(d, 'all', `Full time: ${teamName(d, m.homeId)} ${h}–${a} ${teamName(d, m.awayId)}.`, `/matches/${m.id}`);
+          if (approve) {
+            const pens = h === a && m.shootoutWinner ? ` (${teamName(d, m.shootoutWinner)} win on penalties)` : '';
+            notify(d, 'all', `Full time: ${teamName(d, m.homeId)} ${h}–${a} ${teamName(d, m.awayId)}${pens}.`, `/matches/${m.id}`);
+            // Fill the Final Four / Final as soon as they are decided.
+            advanceKnockouts(d).forEach((id) => {
+              const k = d.matches.find((x) => x.id === id)!;
+              [k.homeId, k.awayId].forEach((tm) => tm && notify(d, `team:${tm}`, `You're through! ${matchLabel(d, k)} — ${k.stage === 'final' ? 'the Final' : 'semi-final'}.`, `/matches/${k.id}`));
+              notify(d, 'all', `${k.stage === 'final' ? 'The Final is set' : 'Semi-final confirmed'}: ${matchLabel(d, k)}.`, `/matches/${k.id}`);
+              audit(d, user.id, 'Knockout confirmed', matchLabel(d, k));
+            });
+          }
         }
         notify(d, r.createdBy, `Your request "${summary}" was ${verdict}${note ? `: ${note}` : '.'}`, dashboardPath(d.users.find((u) => u.id === r.createdBy)));
         audit(d, user.id, `Request ${verdict}`, summary + (note ? ` — "${note}"` : ''));
@@ -253,11 +289,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     createUser: (u) => {
-      if (user?.role !== 'god') return;
+      if (user?.role !== 'god') return { ok: false, message: 'Only the God Admin can invite users.' };
+      const problem = emailProblem(db, u.email);
+      if (problem) return { ok: false, message: problem };
       mutate((d) => {
-        d.users.push({ ...u, id: uid('u'), createdAt: new Date().toISOString() });
+        d.users.push({ ...u, name: u.name.trim(), email: u.email.trim().toLowerCase(), id: uid('u'), createdAt: new Date().toISOString() });
         audit(d, user.id, 'User created', `${u.name} as ${ROLE_LABEL[u.role]}`);
       });
+      return { ok: true, message: `${u.name} was added as ${ROLE_LABEL[u.role]}.` };
     },
     updateUser: (id, patch) => {
       if (user?.role !== 'god') return;
@@ -275,6 +314,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
     },
 
+    editFixture: (id, patch) => {
+      if (user?.role !== 'god') return { ok: false, message: 'Only the God Admin can edit fixtures directly.' };
+      const m0 = db.matches.find((x) => x.id === id);
+      if (!m0) return { ok: false, message: 'Match not found.' };
+      const moved = patch.kickoff !== m0.kickoff || patch.venueId !== m0.venueId;
+      if (moved) {
+        const problem = scheduleProblem(db, id, patch.kickoff !== m0.kickoff ? patch.kickoff : undefined, patch.venueId);
+        if (problem) return { ok: false, message: problem };
+      }
+      if (patch.postponed && m0.status !== 'scheduled' && m0.status !== 'postponed') return { ok: false, message: 'Only a match that hasn\'t started can be postponed.' };
+      mutate((d) => {
+        const m = d.matches.find((x) => x.id === id)!;
+        m.kickoff = patch.kickoff; m.venueId = patch.venueId; m.referee = patch.referee;
+        if (m.status === 'scheduled' || m.status === 'postponed') m.status = patch.postponed ? 'postponed' : 'scheduled';
+        audit(d, user.id, 'Fixture edited', `${matchLabel(d, m)}: ${new Date(m.kickoff).toLocaleString()} at ${d.venues.find((v) => v.id === m.venueId)?.name}${patch.postponed ? ' (postponed)' : ''}`);
+        if (moved || patch.postponed !== (m0.status === 'postponed')) {
+          const text = patch.postponed ? `${matchLabel(d, m)} has been postponed.` : `${matchLabel(d, m)}: ${new Date(m.kickoff).toLocaleString()} at ${d.venues.find((v) => v.id === m.venueId)?.name}.`;
+          [m.homeId, m.awayId].forEach((tm) => tm && notify(d, `team:${tm}`, text, `/matches/${m.id}`));
+          notify(d, 'role:host', `Fixture updated: ${text}`, `/matches/${m.id}`);
+        }
+      });
+      return { ok: true, message: 'Fixture updated.' };
+    },
+    kickOff: (id) => {
+      const m0 = db.matches.find((x) => x.id === id);
+      if (!m0 || !canRunMatch(user, m0)) return { ok: false, message: 'You can\'t run this match.' };
+      if (m0.status !== 'scheduled') return { ok: false, message: m0.status === 'postponed' ? 'This match is postponed.' : 'This match has already started.' };
+      const st = kickOffState(m0);
+      if (!st.ok) return { ok: false, message: `Kick-off opens 1 hour before the scheduled time (${new Date(st.opensAt).toLocaleString()}).` };
+      store.updateMatch(id, { status: 'live', liveMinute: 1 }, 'kick-off');
+      return { ok: true, message: 'Kick-off! The match is live.' };
+    },
     updateMatch: (id, patch, auditText) => mutate((d) => {
       const m = d.matches.find((x) => x.id === id);
       if (!m || !user) return;
@@ -293,7 +364,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (m) m.events = m.events.filter((e) => e.id !== eventId);
     }),
     submitResult: (matchId, note) => {
-      if (!user) return;
+      if (!user) return { ok: false, message: 'Sign in first.' };
+      const m0 = db.matches.find((x) => x.id === matchId);
+      if (!m0 || !canRunMatch(user, m0)) return { ok: false, message: 'You can\'t run this match.' };
+      if (m0.status !== 'live') return { ok: false, message: 'Only a live match can be submitted.' };
+      const [h0, a0] = score(m0);
+      if (m0.stage !== 'league' && h0 === a0 && !m0.shootoutWinner) {
+        return { ok: false, message: 'Knockout matches need a winner. Record who won the penalty shoot-out first.' };
+      }
       mutate((d) => {
         const m = d.matches.find((x) => x.id === matchId)!;
         const [h, a] = score(m);
@@ -302,6 +380,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notify(d, 'role:god', `Result submitted for verification: ${matchLabel(d, m)} ${h}–${a}.`, '/dashboard/admin');
         audit(d, user.id, 'Result submitted', `${matchLabel(d, m)} ${h}–${a}`);
       });
+      return { ok: true, message: 'Result sent to the God Admin for verification.' };
     },
 
     saveNews: (n) => {
@@ -347,8 +426,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     vote: (matchId, playerId) => {
       if (!user) return;
+      const m = db.matches.find((x) => x.id === matchId);
+      if (!m || !motmOpen(m) || user.playerId === playerId) return; // closed, or voting for yourself
       mutate((d) => { d.motmVotes[user.id] = { ...(d.motmVotes[user.id] ?? {}), [matchId]: playerId }; });
     },
+    viewHighlight: (id) => mutate((d) => { const h = d.highlights.find((x) => x.id === id); if (h) h.views += 1; }),
     noticesFor: (u) => {
       if (!u) return db.notices.filter((n) => n.to === 'all').slice(0, 10);
       const staffRole = u.role === 'host' || u.role === 'organizer';

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useStore, useLookup } from '../store/store';
-import { Crest, Jersey, FormBadge, Empty, MatchCard, Avatar, StadiumIcon } from '../components/ui';
+import { Crest, Jersey, FormBadge, Empty, MatchCard, Avatar, StadiumIcon, usePageTitle } from '../components/ui';
 import { C } from '../theme';
+import { isUpcoming } from '../data/rules';
 import { PageHead } from '../components/blocks';
 import { standings, teamMatches, teamSeasonStats, playerTotals } from '../data/derive';
 import { fmtDate, mapsUrl } from '../format';
@@ -45,12 +46,13 @@ export function TeamDetail() {
   const L = useLookup();
   const [tab, setTab] = useState<'overview' | 'squad' | 'fixtures' | 'stats'>('overview');
   const t = L.team(id);
+  usePageTitle(t?.name ?? 'Club not found');
   if (!t) return <section className="section"><div className="container"><Empty>Club not found.</Empty></div></section>;
   const table = standings(db);
   const pos = table.findIndex((r) => r.team.id === t.id);
   const row = table[pos];
   const ms = teamMatches(db, t.id);
-  const next = ms.find((m) => m.status !== 'finished');
+  const next = ms.find((m) => m.status === 'live' || isUpcoming(m));
   const recent = ms.filter((m) => m.status === 'finished').slice(-3).reverse();
   const squad = db.players.filter((p) => p.teamId === t.id && p.active).sort((a, b) => a.number - b.number);
   const totals = playerTotals(db);
@@ -173,6 +175,7 @@ export function PlayerProfile() {
   const { db } = useStore();
   const L = useLookup();
   const p = L.player(id);
+  usePageTitle(p?.name ?? 'Player not found');
   if (!p) return <section className="section"><div className="container"><Empty>Player not found.</Empty></div></section>;
   const t = L.team(p.teamId)!;
   const tot = playerTotals(db).get(p.id)!;

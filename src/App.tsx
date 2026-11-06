@@ -23,7 +23,7 @@ export default function App() {
   return (
     <StoreProvider>
       {/* Hash routing lets the site run on any static host (GitHub Pages, Netlify, S3) with no server rewrites. */}
-      <HashRouter>
+      <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<Home />} />

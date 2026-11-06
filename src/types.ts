@@ -39,6 +39,8 @@ export interface Player {
   foot: 'Left' | 'Right' | 'Both';
   active: boolean;
   joinedAt: string;
+  /** Set when the player is deregistered; appearances after this date don't count. */
+  removedAt?: string;
 }
 
 export interface Team {
@@ -109,6 +111,8 @@ export interface Match {
   attendance?: number;
   /** Minute shown while live. */
   liveMinute?: number;
+  /** Knockouts only: the team that won a penalty shoot-out after a draw. */
+  shootoutWinner?: string;
 }
 
 export type RequestType =

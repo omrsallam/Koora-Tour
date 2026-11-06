@@ -57,10 +57,17 @@ function Notifications() {
           <div className="dropdown-title">Notifications</div>
           {list.length === 0 && <div className="muted small pad">You're all caught up.</div>}
           {list.map((n) => (
-            <Link key={n.id} to={n.link ?? '#'} className="notif" onClick={() => setOpen(false)}>
-              <span>{n.text}</span>
-              <span className="muted small">{timeAgo(n.at)}</span>
-            </Link>
+            n.link ? (
+              <Link key={n.id} to={n.link} className="notif" onClick={() => setOpen(false)}>
+                <span>{n.text}</span>
+                <span className="muted small">{timeAgo(n.at)}</span>
+              </Link>
+            ) : (
+              <div key={n.id} className="notif">
+                <span>{n.text}</span>
+                <span className="muted small">{timeAgo(n.at)}</span>
+              </div>
+            )
           ))}
         </div>
       )}

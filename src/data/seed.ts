@@ -3,7 +3,7 @@ import type {
   DB, Team, Venue, Player, Match, MatchEvent, User, NewsItem, Highlight, Position, Privilege, ApprovalRequest, Notice,
 } from '../types';
 
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 /** Season shape: 12 clubs → 11 league matchdays. Matchdays up to LAST_PLAYED are already played. */
 export const LAST_PLAYED = 8;
@@ -172,20 +172,27 @@ function generateEvents(rng: () => number, m: Match, players: Player[]): { event
   return { events, stats };
 }
 
-/** Next Saturday that is at least 2 days away — keeps the demo season "current" whenever it is first opened. */
-function nextMatchday(now: Date): Date {
-  const d = new Date(now);
-  d.setHours(18, 0, 0, 0);
-  const add = (6 - d.getDay() + 7) % 7 || 7;
-  d.setDate(d.getDate() + add);
-  if (d.getTime() - now.getTime() < 2 * 864e5) d.setDate(d.getDate() + 7);
-  return d;
+/**
+ * When the next matchday is, so that every "played" match is in the past and every upcoming
+ * one in the future: the next matchday is the first Saturday after `now`. If a weekend is in
+ * progress (Saturday 14:00 to Sunday night), the played matchdays are moved back one more
+ * week, so the current weekend simply has no matches.
+ */
+function nextMatchday(now: Date): { next: Date; playedShiftDays: number } {
+  const next = new Date(now);
+  next.setHours(14, 0, 0, 0);
+  next.setDate(next.getDate() + ((6 - next.getDay() + 7) % 7));
+  if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 7);
+  const lastPlayedSundayEnd = new Date(next.getTime() - 6 * 864e5);
+  lastPlayedSundayEnd.setHours(20, 30, 0, 0); // Sunday's 18:00 kickoff + full time
+  return { next, playedShiftDays: lastPlayedSundayEnd.getTime() > now.getTime() ? 7 : 0 };
 }
 
 export function createSeed(now = new Date()): DB {
   const rng = mulberry32(20261105);
-  const nextDay = nextMatchday(now);
-  const roundDate = (round: number) => new Date(nextDay.getTime() + (round - NEXT_ROUND) * 7 * 864e5);
+  const { next: nextDay, playedShiftDays } = nextMatchday(now);
+  const roundDate = (round: number) =>
+    new Date(nextDay.getTime() + ((round - NEXT_ROUND) * 7 - (round <= LAST_PLAYED ? playedShiftDays : 0)) * 864e5);
   const seasonStart = roundDate(1);
   const players = buildPlayers(rng, seasonStart);
   const rounds = roundRobin(teams.map((t) => t.id));

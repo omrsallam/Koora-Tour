@@ -1,22 +1,32 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useStore, useLookup } from '../store/store';
 import { PageHead } from '../components/blocks';
 import { Crest, StadiumIcon } from '../components/ui';
 import { fmtDateTime, mapsEmbed, mapsUrl } from '../format';
+import { isUpcoming } from '../data/rules';
 
 export default function Venues() {
   const { db } = useStore();
   const L = useLookup();
+  // Arriving from search (?venue=…): scroll to that stadium and highlight it.
+  const [params] = useSearchParams();
+  const focusId = params.get('venue');
+  useEffect(() => {
+    if (!focusId) return;
+    const el = document.getElementById(focusId);
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, [focusId]);
   return (
     <>
       <PageHead kicker="Getting there" title="Venues" sub="Stadiums, addresses, transit and parking — plus every upcoming match at each ground." />
       <section className="section">
         <div className="container grid grid-2">
           {db.venues.map((v) => {
-            const upcoming = db.matches.filter((m) => m.venueId === v.id && m.status === 'scheduled').sort((a, b) => a.kickoff.localeCompare(b.kickoff)).slice(0, 3);
+            const upcoming = db.matches.filter((m) => m.venueId === v.id && isUpcoming(m)).sort((a, b) => a.kickoff.localeCompare(b.kickoff)).slice(0, 3);
             const tenants = db.teams.filter((t) => t.homeVenueId === v.id);
             return (
-              <div className="card venue-card" key={v.id} id={v.id}>
+              <div className={`card venue-card ${focusId === v.id ? 'venue-focus' : ''}`} key={v.id} id={v.id}>
                 <div className="venue-top">
                   <div className="row-between">
                     <div>

@@ -1,9 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Team, Player, Match } from '../types';
 import { useLookup } from '../store/store';
 import { score, hasScore } from '../data/derive';
 import { fmtDate, fmtTime, roundLabel } from '../format';
+
+/** Sets the browser-tab title, e.g. "Matches · Koora Tour". */
+export function usePageTitle(title?: string) {
+  useEffect(() => {
+    document.title = title ? `${title} · Koora Tour` : 'Koora Tour — Our city. Our cup.';
+  }, [title]);
+}
 
 /* ---------- Crest: generated shield in team colours ---------- */
 export function Crest({ team, size = 40, label }: { team?: Team; size?: number; label?: string }) {
@@ -68,6 +75,7 @@ export function StatusPill({ m }: { m: Match }) {
   if (m.status === 'awaiting_verification') return <span className="pill pill-warn">FT · Verifying</span>;
   if (m.status === 'finished') return <span className="pill">FT</span>;
   if (m.status === 'postponed') return <span className="pill pill-danger">Postponed</span>;
+  if (new Date(m.kickoff).getTime() <= Date.now()) return <span className="pill pill-warn" title="Kickoff time has passed">Awaiting result</span>;
   return <span className="pill pill-ghost">{fmtTime(m.kickoff)}</span>;
 }
 
@@ -114,6 +122,7 @@ export function Countdown({ to }: { to: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const diff = Math.max(0, new Date(to).getTime() - now);
+  if (diff === 0) return <div className="countdown-done">Kick-off time</div>;
   const parts = [
     ['Days', Math.floor(diff / 864e5)],
     ['Hrs', Math.floor((diff / 36e5) % 24)],
@@ -130,16 +139,34 @@ export function Countdown({ to }: { to: string }) {
 }
 
 /* ---------- Modal ---------- */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])';
+
 export function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const box = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  // Move focus into the dialog, keep Tab inside it, and give focus back when it closes.
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', k);
+    const opener = document.activeElement as HTMLElement | null;
+    const items = () => [...(box.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].filter((el) => el.offsetParent !== null || el === document.activeElement);
+    const first = box.current?.querySelector<HTMLElement>('.modal-body ' + FOCUSABLE.split(', ').join(', .modal-body ')) ?? items()[0];
+    (first ?? box.current)?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { close.current(); return; }
+      if (e.key !== 'Tab') return;
+      const list = items();
+      if (!list.length) { e.preventDefault(); return; }
+      const i = list.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && (i <= 0)) { e.preventDefault(); list[list.length - 1].focus(); }
+      else if (!e.shiftKey && (i === list.length - 1 || i === -1)) { e.preventDefault(); list[0].focus(); }
+    };
+    window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', k); document.body.style.overflow = ''; };
-  }, [onClose]);
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; opener?.focus?.(); };
+  }, []);
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} ref={box} tabIndex={-1}>
         <div className="modal-head">
           <h3>{title}</h3>
           <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>

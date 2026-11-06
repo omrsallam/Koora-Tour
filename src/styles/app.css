@@ -766,3 +766,11 @@ button, .btn, .chip, .tabs, .nav, .rail, .story, .match-card, .fixture, .video-c
 .fixture .meta .venue-inline { justify-content: flex-end; }
 .fixture .meta .stadium-icon { color: var(--turq-deep); }
 @media (max-width: 720px) { .fixture .meta .venue-inline { justify-content: center; } }
+.countdown-done { text-align: center; font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; font-size: 1.3rem; padding: 12px; border-radius: 10px; background: var(--blue-deep); color: var(--turq-2); }
+.overdue-note { max-width: 520px; margin: 12px auto 0; text-align: center; font-size: .86rem; padding: 10px 14px; border-radius: 10px; background: rgba(28, 196, 191, .14); color: var(--turq-2); }
+.req-blocker { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(225, 29, 60, .08); color: var(--red-deep); font-size: .86rem; font-weight: 600; }
+.req-warning { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(42, 70, 214, .08); color: var(--blue-2); font-size: .86rem; font-weight: 600; }
+
+.venue-card { scroll-margin-top: 90px; }
+.venue-focus { box-shadow: 0 0 0 3px var(--turq), var(--shadow); animation: venue-pulse 1.2s ease 2; }
+@keyframes venue-pulse { 50% { box-shadow: 0 0 0 8px rgba(28, 196, 191, .35), var(--shadow); } }

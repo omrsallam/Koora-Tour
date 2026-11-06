@@ -7,6 +7,7 @@ import { Avatar, Crest, Empty, Modal, useFlash, StatusPill } from '../../compone
 import { DashShell, RequireRole, RequestCard, DecisionBar, DashTitle, TYPE_LABEL } from './shared';
 import { fmtDateTime, timeAgo, toLocalInput, roundLabel } from '../../format';
 import { score } from '../../data/derive';
+import { approvalBlocker, approvalWarning, scheduleProblem, isOverdue } from '../../data/rules';
 
 const ROLES: Role[] = ['god', 'host', 'organizer', 'captain', 'player', 'fan'];
 
@@ -99,9 +100,15 @@ function CreateUser({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('organizer');
+  const [error, setError] = useState('');
   return (
     <Modal title="Invite a user" onClose={onClose}>
-      <form className="stack" onSubmit={(e) => { e.preventDefault(); createUser({ name, email, role, privileges: role === 'host' || role === 'organizer' ? [...ROLE_PRESETS[role]] : [] }); onClose(); }}>
+      <form className="stack" onSubmit={(e) => {
+        e.preventDefault();
+        const r = createUser({ name, email, role, privileges: role === 'host' || role === 'organizer' ? [...ROLE_PRESETS[role]] : [] });
+        if (r.ok) onClose(); else setError(r.message);
+      }}>
+        {error && <div className="req-blocker" role="alert">{error}</div>}
         <label className="field">Name<input required value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label className="field">Email<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
         <label className="field">Role
@@ -117,33 +124,42 @@ function CreateUser({ onClose }: { onClose: () => void }) {
 }
 
 function FixtureEditor({ m, onClose }: { m: Match; onClose: () => void }) {
-  const { db, updateMatch } = useStore();
+  const { db, editFixture } = useStore();
   const L = useLookup();
   const [kickoff, setKickoff] = useState(toLocalInput(m.kickoff));
   const [venueId, setVenueId] = useState(m.venueId);
-  const [status, setStatus] = useState(m.status);
+  const [postponed, setPostponed] = useState(m.status === 'postponed');
   const [referee, setReferee] = useState(m.referee);
+  const [error, setError] = useState('');
+  const notStarted = m.status === 'scheduled' || m.status === 'postponed';
+  const iso = kickoff && !isNaN(new Date(kickoff).getTime()) ? new Date(kickoff).toISOString() : m.kickoff;
+  const moved = iso !== m.kickoff || venueId !== m.venueId;
+  const live = moved && notStarted ? scheduleProblem(db, m.id, iso !== m.kickoff ? iso : undefined, venueId) : null;
   return (
     <Modal title={`Edit fixture: ${L.team(m.homeId)?.name ?? m.homeLabel} vs ${L.team(m.awayId)?.name ?? m.awayLabel}`} onClose={onClose}>
       <div className="stack">
         <div className="god-banner" style={{ marginBottom: 0, padding: '12px 16px' }}><span>⚡</span><span className="small">God Admin override — applies immediately, notifies both teams and is written to the audit log.</span></div>
         <div className="form-grid">
-          <label className="field">Kickoff<input type="datetime-local" value={kickoff} onChange={(e) => setKickoff(e.target.value)} /></label>
-          <label className="field">Venue<select value={venueId} onChange={(e) => setVenueId(e.target.value)}>{db.venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
+          <label className="field">Kickoff<input type="datetime-local" value={kickoff} disabled={!notStarted} onChange={(e) => { setKickoff(e.target.value); setError(''); }} /></label>
+          <label className="field">Venue<select value={venueId} disabled={!notStarted} onChange={(e) => { setVenueId(e.target.value); setError(''); }}>{db.venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
           <label className="field">Status
-            <select value={status} onChange={(e) => setStatus(e.target.value as Match['status'])}>
-              <option value="scheduled">Scheduled</option><option value="postponed">Postponed</option><option value="live">Live</option><option value="finished">Finished</option>
-            </select>
+            {notStarted ? (
+              <select value={postponed ? 'postponed' : 'scheduled'} onChange={(e) => setPostponed(e.target.value === 'postponed')}>
+                <option value="scheduled">Scheduled</option><option value="postponed">Postponed</option>
+              </select>
+            ) : <input value={m.status === 'live' ? 'Live' : m.status === 'finished' ? 'Finished' : 'Awaiting verification'} disabled />}
           </label>
           <label className="field">Referee<input value={referee} onChange={(e) => setReferee(e.target.value)} /></label>
         </div>
+        <div className="muted small">Results are never set here: a match is finished only by running it in match-day control and verifying the result.</div>
+        {!notStarted && <div className="req-warning">This match has {m.status === 'finished' ? 'finished' : 'started'}, so only the referee can be changed.</div>}
+        {(live || error) && <div className="req-blocker" role="alert">{error || live}</div>}
       </div>
       <div className="form-actions">
         <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary btn-sm" onClick={() => {
-          const iso = new Date(kickoff).toISOString();
-          updateMatch(m.id, { kickoff: iso, venueId, status, referee }, `kickoff ${fmtDateTime(iso)}, venue ${L.venue(venueId)?.name}, status ${status}`);
-          onClose();
+        <button className="btn btn-primary btn-sm" disabled={!!live || (!notStarted && moved)} onClick={() => {
+          const r = editFixture(m.id, { kickoff: notStarted ? iso : m.kickoff, venueId: notStarted ? venueId : m.venueId, referee, postponed: notStarted && postponed });
+          if (r.ok) onClose(); else setError(r.message);
         }}>Apply override</button>
       </div>
     </Modal>
@@ -190,6 +206,7 @@ function AdminInner() {
   const [q, setQ] = useState('');
 
   const pending = db.requests.filter((r) => r.status === 'pending');
+  const overdue = db.matches.filter((m) => isOverdue(m)).sort((x, y) => x.kickoff.localeCompare(y.kickoff));
   const history = db.requests.filter((r) => r.status !== 'pending');
   const finished = db.matches.filter((m) => m.status === 'finished');
   const goals = finished.reduce((s, m) => s + score(m).reduce((a, b) => a + b, 0), 0);
@@ -232,8 +249,20 @@ function AdminInner() {
           </div>
           <div className="grid grid-main">
             <div>
+              {overdue.length > 0 && (
+                <div className="card card-pad" style={{ marginBottom: 16, borderLeft: '5px solid var(--red)' }}>
+                  <h3 style={{ marginBottom: 6 }}>Kickoff passed, no result yet</h3>
+                  <p className="muted small">These matches should have started. Ask the host to run them in match-day control, or postpone / move them in Fixtures.</p>
+                  {overdue.map((m) => (
+                    <div className="list-row" key={m.id} style={{ padding: '8px 0' }}>
+                      <span className="row" style={{ flex: 1 }}><Crest team={L.team(m.homeId)} size={20} /><b>{L.team(m.homeId)?.short} v {L.team(m.awayId)?.short}</b><span className="muted small">{fmtDateTime(m.kickoff)} · {L.venue(m.venueId)?.name}</span></span>
+                      <button className="btn btn-ghost btn-xs" onClick={() => setFixture(m)}>Postpone / move</button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <h3 style={{ marginBottom: 12 }}>Waiting for you</h3>
-              {pending.slice(0, 3).map((r) => <RequestCard key={r.id} r={r} showRecommend actions={<DecisionBar onDecide={(a, n) => doDecide(r.id, a, n)} />} />)}
+              {pending.slice(0, 3).map((r) => <RequestCard key={r.id} r={r} showRecommend actions={<DecisionBar onDecide={(a, n) => doDecide(r.id, a, n)} blocker={approvalBlocker(db, r)} warning={approvalWarning(db, r)} />} />)}
               {pending.length === 0 && <Empty>Inbox zero. Nothing needs your decision.</Empty>}
             </div>
             <div className="card card-pad">
@@ -262,7 +291,7 @@ function AdminInner() {
             <button className={reqTab === 'history' ? 'active' : ''} onClick={() => setReqTab('history')}>History</button>
           </div>
           {shownReqs.length === 0 && <Empty>{reqTab === 'pending' ? 'No pending requests.' : 'No decisions yet.'}</Empty>}
-          {shownReqs.map((r) => <RequestCard key={r.id} r={r} showRecommend={r.status === 'pending'} actions={r.status === 'pending' ? <DecisionBar onDecide={(a, n) => doDecide(r.id, a, n)} approveLabel={r.type === 'result' ? 'Verify result' : 'Approve'} /> : undefined} />)}
+          {shownReqs.map((r) => <RequestCard key={r.id} r={r} showRecommend={r.status === 'pending'} actions={r.status === 'pending' ? <DecisionBar onDecide={(a, n) => doDecide(r.id, a, n)} approveLabel={r.type === 'result' ? 'Verify result' : 'Approve'} blocker={approvalBlocker(db, r)} warning={approvalWarning(db, r)} /> : undefined} />)}
         </>
       )}
 

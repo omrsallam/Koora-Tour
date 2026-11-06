@@ -62,7 +62,10 @@ function Recap({ h }: { h: Highlight }) {
 }
 
 export function useHighlightPlayer() {
+  const { viewHighlight } = useStore();
   const [h, setH] = useState<Highlight | null>(null);
+  // Count a view each time a highlight is opened.
+  const open = (x: Highlight) => { viewHighlight(x.id); setH(x); };
   const modal = h ? (
     <Modal title={h.title} onClose={() => setH(null)} wide>
       {h.youtubeId
@@ -74,7 +77,7 @@ export function useHighlightPlayer() {
       </div>
     </Modal>
   ) : null;
-  return { open: setH, modal };
+  return { open, modal };
 }
 
 export default function Highlights() {
