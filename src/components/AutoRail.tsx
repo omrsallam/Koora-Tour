@@ -71,15 +71,20 @@ export default function AutoRail({
     setIndex((i) => i + dir);
   }, [index, n]);
 
-  // Autoplay in sequence.
+  // Autoplay in sequence. The timer must not restart when the index changes (including the
+  // invisible snap back to the first set), otherwise the last box lingers longer than the others.
+  const stepRef = useRef(step);
+  stepRef.current = step;
   useEffect(() => {
     if (!overflow || paused || reduced) return;
-    const t = setInterval(() => { if (!document.hidden) step(1); }, interval);
+    const t = setInterval(() => { if (!document.hidden) stepRef.current(1); }, interval);
     return () => clearInterval(t);
-  }, [overflow, paused, reduced, interval, step]);
+  }, [overflow, paused, reduced, interval]);
 
   // After sliding into the duplicate set, snap back to the real one without animation.
-  const onTransitionEnd = () => {
+  const onTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
+    // Ignore transitions bubbling up from the boxes themselves (e.g. hover lift on a card).
+    if (e.target !== e.currentTarget || e.propertyName !== 'transform') return;
     if (index >= n) { setAnimate(false); setIndex(index - n); }
   };
   useEffect(() => {

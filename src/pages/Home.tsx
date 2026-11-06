@@ -77,13 +77,16 @@ function YourClub() {
 function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
   const { db } = useStore();
   const L = useLookup();
-  const finished = db.matches.filter((m) => m.status === 'finished').sort((a, b) => b.kickoff.localeCompare(a.kickoff)).slice(0, 12);
+  // Only the most recent matchday's results.
+  const lastRound = Math.max(0, ...db.matches.filter((m) => m.stage === 'league' && m.status === 'finished').map((m) => m.round));
+  const finished = db.matches.filter((m) => m.stage === 'league' && m.round === lastRound && m.status === 'finished').sort((a, b) => a.kickoff.localeCompare(b.kickoff));
   const featured = db.highlights[0];
   const fm = featured && db.matches.find((m) => m.id === featured.matchId);
   return (
     <div className="stories-section">
       <div className="container">
-        <AutoRail label="Latest results" tone="dark" interval={2600}>
+        {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>Matchday {lastRound} · results</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
+        <AutoRail label={`Matchday ${lastRound} results`} tone="dark" interval={2600}>
           {finished.map((m) => {
             const [h, a] = score(m);
             const hl = db.highlights.find((x) => x.matchId === m.id);
