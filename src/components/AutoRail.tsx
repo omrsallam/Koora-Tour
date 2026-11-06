@@ -162,9 +162,14 @@ export default function AutoRail({
           <button className="rail-arrow rail-next" onClick={() => step(1, CLICK_MS)} aria-label="Next">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M9 5l7 7-7 7" /></svg>
           </button>
-          <div className="rail-dots" aria-hidden="true">
-            {items.map((_, i) => <span key={i} className={i === active ? 'on' : ''} />)}
-          </div>
+          {n <= 12 ? (
+            <div className="rail-dots" aria-hidden="true">
+              {items.map((_, i) => <span key={i} className={i === active ? 'on' : ''} />)}
+            </div>
+          ) : (
+            // Long rows get a progress bar instead of a crowd of dots.
+            <div className="rail-progress" aria-hidden="true"><span style={{ width: `${((active + 1) / n) * 100}%` }} /></div>
+          )}
         </>
       )}
     </div>

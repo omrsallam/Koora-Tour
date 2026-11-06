@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, useLookup, dashboardPath } from '../store/store';
-import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8 } from '../components/ui';
+import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8, Avatar } from '../components/ui';
 import { C, G } from '../theme';
 import Skyline from '../components/Skyline';
 import AutoRail from '../components/AutoRail';
-import type { Highlight } from '../types';
+import type { Highlight, Match } from '../types';
 import { score } from '../data/derive';
 import { compact, timeAgo } from '../format';
 import { StandingsTable, LeaderCard, Bracket } from '../components/blocks';
@@ -86,33 +86,91 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
     const t = window.setInterval(() => setSpot((i) => i + 1), 1700);
     return () => window.clearInterval(t);
   }, [spotPaused]);
-  // Only the most recent matchday's results.
-  const lastRound = Math.max(0, ...db.matches.filter((m) => m.stage === 'league' && m.status === 'finished').map((m) => m.round));
-  const finished = db.matches.filter((m) => m.stage === 'league' && m.round === lastRound && m.status === 'finished').sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+  // Results from the last three matchdays (newest first), each week introduced by a label.
+  const playedRounds = [...new Set(db.matches.filter((m) => m.stage === 'league' && m.status === 'finished').map((m) => m.round))].sort((x, y) => y - x);
+  const lastRound = playedRounds[0] ?? 0;
+  const weeks = playedRounds.slice(0, 3).map((round) => ({
+    round,
+    matches: db.matches.filter((m) => m.stage === 'league' && m.round === round && m.status === 'finished').sort((x, y) => x.kickoff.localeCompare(y.kickoff)),
+  }));
+  const latest = weeks[0]?.matches ?? [];
+
+  // Feature circles, UCL-style: Goal of the Week, Player of the Week, Top of the Table, Next up.
+  const goalsIn = (m: Match) => score(m)[0] + score(m)[1];
+  const gotwMatch = [...latest].sort((x, y) => goalsIn(y) - goalsIn(x))[0];
+  const gotw = gotwMatch && db.highlights.find((h) => h.matchId === gotwMatch.id);
+  const contrib = new Map<string, number>();
+  latest.forEach((m) => m.events.forEach((e) => {
+    if (e.type === 'goal' || e.type === 'penalty') contrib.set(e.playerId, (contrib.get(e.playerId) ?? 0) + 3);
+    if (e.assistId) contrib.set(e.assistId, (contrib.get(e.assistId) ?? 0) + 2);
+  }));
+  const potw = L.player([...contrib.entries()].sort((x, y) => y[1] - x[1])[0]?.[0]);
+  const leader = standings(db)[0];
+  const nextUp = db.matches.filter((m) => m.status === 'scheduled' && m.homeId).sort((x, y) => x.kickoff.localeCompare(y.kickoff))[0];
+
+  type Entry = { key: string; label: ReactNode; aria: string; disc: ReactNode; feature?: boolean; onClick?: () => void; to?: string } | { key: string; divider: string };
+  const entries: Entry[] = [];
+  if (gotwMatch) entries.push({
+    key: 'gotw', feature: true, aria: 'Goal of the Week',
+    disc: <span className="story-word">GOAL<small>of the</small>WEEK</span>,
+    label: <>Goal of the Week<small>{L.team(gotwMatch.homeId)?.short} v {L.team(gotwMatch.awayId)?.short}</small></>,
+    ...(gotw ? { onClick: () => onOpen(gotw) } : { to: `/matches/${gotwMatch.id}` }),
+  });
+  if (potw) entries.push({
+    key: 'potw', feature: true, aria: `Player of the Week: ${potw.name}`, to: `/players/${potw.id}`,
+    disc: <><Avatar name={potw.name} size={54} color={L.team(potw.teamId)?.colors[0]} /><Crest team={L.team(potw.teamId)} size={22} /></>,
+    label: <>Player of the Week<small>{potw.name}</small></>,
+  });
+  if (leader) entries.push({
+    key: 'leader', feature: true, aria: `Top of the table: ${leader.team.name}`, to: '/standings',
+    disc: <><Crest team={leader.team} size={40} /><b className="story-pts">{leader.pts}</b></>,
+    label: <>Top of the Table<small>{leader.team.short} · {leader.pts} pts</small></>,
+  });
+  if (nextUp) entries.push({
+    key: 'next', feature: true, aria: 'Next match', to: `/matches/${nextUp.id}`,
+    disc: <><Crest team={L.team(nextUp.homeId)} size={30} /><Crest team={L.team(nextUp.awayId)} size={30} /></>,
+    label: <>Next up<small>{L.team(nextUp.homeId)?.short} v {L.team(nextUp.awayId)?.short}</small></>,
+  });
+  weeks.forEach((w) => {
+    entries.push({ key: `md${w.round}`, divider: `Matchday ${w.round}` });
+    w.matches.forEach((m) => {
+      const [h, a] = score(m);
+      const hl = db.highlights.find((x) => x.matchId === m.id);
+      const home = L.team(m.homeId); const away = L.team(m.awayId);
+      const text = `${home?.short} ${h}-${a} ${away?.short}`;
+      entries.push({
+        key: m.id, aria: hl ? `Watch ${text} highlights` : `${text} match centre`,
+        disc: <><Crest team={home} size={30} /><Crest team={away} size={30} /></>,
+        label: <>{text}{hl && <span className="story-play" aria-hidden="true"> ▶</span>}</>,
+        ...(hl ? { onClick: () => onOpen(hl) } : { to: `/matches/${m.id}` }),
+      });
+    });
+  });
+  const circleCount = entries.filter((e) => !('divider' in e)).length;
+  let circleIdx = -1;
+
   const featured = db.highlights[0];
   const fm = featured && db.matches.find((m) => m.id === featured.matchId);
   return (
     <div className="stories-section">
       <div className="container">
-        {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>Matchday {lastRound} · results</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
+        {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>This week on the tour · Matchdays {weeks[weeks.length - 1].round}–{lastRound}</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
         <div onMouseEnter={() => setSpotPaused(true)} onMouseLeave={() => setSpotPaused(false)} onFocusCapture={() => setSpotPaused(true)} onBlurCapture={() => setSpotPaused(false)}>
-        <AutoRail label={`Matchday ${lastRound} results`} tone="dark" interval={2600}>
-          {finished.map((m, idx) => {
-            const [h, a] = score(m);
-            const hl = db.highlights.find((x) => x.matchId === m.id);
-            const home = L.team(m.homeId); const away = L.team(m.awayId);
-            const label = `${home?.short} ${h}-${a} ${away?.short}`;
+        <AutoRail label="Latest on the tour" tone="dark" interval={2400}>
+          {entries.map((e, idx) => {
+            if ('divider' in e) return <div key={e.key} className="story-divider" role="presentation"><span><small>Matchday</small>{e.divider.replace('Matchday ', '')}</span></div>;
+            circleIdx++;
+            const cls = `story ${e.feature ? 'story-feature' : ''} ${circleCount && circleIdx === spot % circleCount ? 'is-spot' : ''}`;
+            const style = { animationDelay: `${Math.min(idx, 10) * 80}ms` };
             const inner = (
               <>
-                <span className="story-ring"><span className="story-disc"><Crest team={home} size={30} /><Crest team={away} size={30} /></span></span>
-                <span className="story-label">{label}{hl && <span aria-hidden="true"> ▶</span>}</span>
+                <span className="story-ring"><span className="story-disc">{e.disc}</span></span>
+                <span className="story-label">{e.label}</span>
               </>
             );
-            const cls = `story ${finished.length && idx === spot % finished.length ? 'is-spot' : ''}`;
-            const delay = { animationDelay: `${idx * 90}ms` };
-            return hl
-              ? <button key={m.id} className={cls} style={delay} onClick={() => onOpen(hl)} aria-label={`Watch ${label} highlights`}>{inner}</button>
-              : <Link key={m.id} className={cls} style={delay} to={`/matches/${m.id}`}>{inner}</Link>;
+            return e.onClick
+              ? <button key={e.key} className={cls} style={style} onClick={e.onClick} aria-label={e.aria}>{inner}</button>
+              : <Link key={e.key} className={cls} style={style} to={e.to!} aria-label={e.aria}>{inner}</Link>;
           })}
         </AutoRail>
         </div>

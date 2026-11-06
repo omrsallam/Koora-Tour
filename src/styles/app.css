@@ -723,3 +723,31 @@ button, .btn, .chip, .tabs, .nav, .rail, .story, .match-card, .fixture, .video-c
 .dash-side, .kit, .brand, .header-actions, .rail-dots, .countdown {
   -webkit-user-select: none; user-select: none;
 }
+
+/* ---------- Stories: feature circles, sub-labels and week dividers ---------- */
+.story-label small { display: block; font-weight: 600; font-size: .68rem; color: rgba(255, 255, 255, .62); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px; }
+.story-feature .story-label { white-space: nowrap; }
+.story-feature .story-ring::before { background: conic-gradient(var(--red), #ff6b81, var(--turq), var(--red)); }
+.story-feature .story-disc { background: radial-gradient(circle at 30% 25%, var(--blue-2), var(--blue-deep) 70%); position: relative; }
+.story-feature .story-disc .avatar { border: 2px solid rgba(255, 255, 255, .85); }
+.story-feature .story-disc .avatar + .crest { position: absolute; right: 6px; bottom: 6px; }
+.story-word { font-family: var(--display); font-weight: 900; font-size: 1.05rem; line-height: .82; text-align: center; letter-spacing: .02em; text-transform: uppercase; }
+.story-word small { display: block; font-size: .62rem; font-weight: 700; letter-spacing: .12em; color: var(--turq-2); margin: 3px 0 2px; }
+.story-pts { font-family: var(--display); font-size: 1.5rem; font-weight: 900; margin-left: 2px; }
+.story-feature { width: 118px; }
+.story-feature .story-label small { max-width: 118px; }
+.story-divider { height: 100%; display: flex; align-items: flex-start; padding: 14px 4px 0 6px; }
+.story-divider span { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 82px; padding-left: 12px; border-left: 2px solid rgba(111, 224, 220, .45); font-family: var(--display); font-size: 2.4rem; font-weight: 900; line-height: .9; color: #fff; }
+.story-divider small { font-family: var(--body); font-size: .6rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--turq-2); margin-bottom: 4px; }
+.rail-progress { width: min(240px, 60%); height: 4px; margin: 16px auto 0; border-radius: 2px; background: rgba(7, 19, 85, .15); overflow: hidden; }
+.rail-progress span { display: block; height: 100%; border-radius: 2px; background: var(--red); transition: width .4s cubic-bezier(.22,.8,.24,1); }
+.rail-dark .rail-progress { background: rgba(255, 255, 255, .18); }
+.rail-dark .rail-progress span { background: var(--turq); }
+@media (max-width: 640px) {
+  .story-label small { max-width: 80px; }
+  .story-feature { width: 100px; }
+  .story-feature .story-label { white-space: normal; }
+  .story-divider span { height: 70px; font-size: 2rem; }
+  .story-feature .story-disc .avatar { width: 44px !important; height: 44px !important; }
+  .story-word { font-size: .92rem; }
+}
