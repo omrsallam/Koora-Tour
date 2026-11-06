@@ -86,14 +86,14 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
     const t = window.setInterval(() => setSpot((i) => i + 1), 1700);
     return () => window.clearInterval(t);
   }, [spotPaused]);
-  // Results from the last three matchdays (newest first), each week introduced by a label.
+  // Results from the last three matchdays in date order (oldest → latest), each week introduced by a label.
   const playedRounds = [...new Set(db.matches.filter((m) => m.stage === 'league' && m.status === 'finished').map((m) => m.round))].sort((x, y) => y - x);
   const lastRound = playedRounds[0] ?? 0;
-  const weeks = playedRounds.slice(0, 3).map((round) => ({
+  const weeks = playedRounds.slice(0, 3).reverse().map((round) => ({
     round,
     matches: db.matches.filter((m) => m.stage === 'league' && m.round === round && m.status === 'finished').sort((x, y) => x.kickoff.localeCompare(y.kickoff)),
   }));
-  const latest = weeks[0]?.matches ?? [];
+  const latest = weeks[weeks.length - 1]?.matches ?? [];
 
   // Feature circles, UCL-style: Goal of the Week, Player of the Week, Top of the Table, Next up.
   const goalsIn = (m: Match) => score(m)[0] + score(m)[1];
@@ -154,7 +154,7 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
   return (
     <div className="stories-section">
       <div className="container">
-        {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>This week on the tour · Matchdays {weeks[weeks.length - 1].round}–{lastRound}</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
+        {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>This week on the tour · Matchdays {weeks[0].round}–{lastRound}</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
         <div onMouseEnter={() => setSpotPaused(true)} onMouseLeave={() => setSpotPaused(false)} onFocusCapture={() => setSpotPaused(true)} onBlurCapture={() => setSpotPaused(false)}>
         <AutoRail label="Latest on the tour" tone="dark" interval={2400}>
           {entries.map((e, idx) => {
