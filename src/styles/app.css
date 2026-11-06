@@ -710,3 +710,16 @@ ul.plain { list-style: none; margin: 0; padding: 0; }
 @media (prefers-reduced-motion: reduce) { .rail-track { transition: none !important; } }
 .rail-item > .video-card { width: 100%; }
 .stories-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+
+/* ---------- No stray text cursor or text selection when clicking around ----------
+   The blinking "|" only belongs in fields you type into. Hide it everywhere else
+   (it otherwise appears with the browser's caret-browsing mode), and stop fast clicks
+   on buttons, rails, cards and tabs from highlighting text. */
+html { caret-color: transparent; -webkit-tap-highlight-color: transparent; }
+input, textarea, select, [contenteditable="true"] { caret-color: var(--turq-deep); }
+.search-box input { caret-color: var(--blue-2); }
+button, .btn, .chip, .tabs, .nav, .rail, .story, .match-card, .fixture, .video-card, .news-card,
+.team-tile, .player-card, .feature-card, .headline, .bracket-match, .next-match, .demo-account,
+.dash-side, .kit, .brand, .header-actions, .rail-dots, .countdown {
+  -webkit-user-select: none; user-select: none;
+}
