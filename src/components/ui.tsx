@@ -91,7 +91,7 @@ export function MatchCard({ m, dark = false }: { m: Match; dark?: boolean }) {
           <span className="score">{show ? side.s : ''}</span>
         </div>
       ))}
-      <div className="match-card-venue">{L.venue(m.venueId)?.name}</div>
+      <div className="match-card-venue"><StadiumIcon size={14} />{L.venue(m.venueId)?.name}</div>
     </Link>
   );
 }
@@ -171,6 +171,28 @@ export function Star8({ size = 24, color = 'currentColor' }: { size?: number; co
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 1l2.6 5.1L20 4l-2.1 5.4L23 12l-5.1 2.6L20 20l-5.4-2.1L12 23l-2.6-5.1L4 20l2.1-5.4L1 12l5.1-2.6L4 4l5.4 2.1z" fill={color} />
+    </svg>
+  );
+}
+
+/** Stadium icon for venues: a stadium bowl with tiered stands, the pitch inside and two floodlights. */
+export function StadiumIcon({ size = 18, title, className = '' }: { size?: number; title?: string; className?: string }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+      strokeLinecap="round" strokeLinejoin="round" className={`stadium-icon ${className}`}
+      role={title ? 'img' : undefined} aria-hidden={title ? undefined : true} aria-label={title}
+    >
+      {/* floodlight masts with lamp heads */}
+      <path d="M3.6 4.5v6.3M20.4 4.5v6.3" />
+      <rect x="1.9" y="2.6" width="3.4" height="2.3" rx=".5" fill="currentColor" stroke="none" />
+      <rect x="18.7" y="2.6" width="3.4" height="2.3" rx=".5" fill="currentColor" stroke="none" />
+      {/* the bowl: rim, outer wall and a ring of stands */}
+      <path d="M1.5 12.6c0-1.9 4.7-3.4 10.5-3.4s10.5 1.5 10.5 3.4v3.6c0 1.9-4.7 3.4-10.5 3.4S1.5 18.1 1.5 16.2z" />
+      <path d="M1.5 12.6c0 1.9 4.7 3.4 10.5 3.4s10.5-1.5 10.5-3.4" />
+      <ellipse cx="12" cy="12.6" rx="6.6" ry="1.9" />
+      {/* pitch with halfway line */}
+      <ellipse cx="12" cy="12.6" rx="4.6" ry="1.1" fill="currentColor" stroke="none" opacity=".5" />
     </svg>
   );
 }

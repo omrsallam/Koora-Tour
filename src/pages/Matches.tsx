@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { Match, MatchEvent } from '../types';
 import { useStore, useLookup, canRunMatch } from '../store/store';
-import { Crest, Empty, StatusPill, Countdown, Avatar } from '../components/ui';
+import { Crest, Empty, StatusPill, Countdown, Avatar, StadiumIcon } from '../components/ui';
 import { PageHead, FixtureRow } from '../components/blocks';
 import { score, hasScore, resolveSlot, teamMatches, resultFor } from '../data/derive';
 import { C } from '../theme';
@@ -125,7 +125,7 @@ export function MatchDetail() {
           )}
           {m.status === 'scheduled' && <div style={{ maxWidth: 380, margin: '10px auto 0' }}><Countdown to={m.kickoff} /></div>}
           <div className="row wrap" style={{ justifyContent: 'center', marginTop: 20, gap: 10 }}>
-            <span className="small muted-light">📍 {venue.name}, {venue.city}</span>
+            <span className="small muted-light venue-inline"><StadiumIcon size={15} />{venue.name}, {venue.city}</span>
             <span className="small muted-light">· Referee {m.referee}</span>
             {m.attendance && <span className="small muted-light">· Attendance {m.attendance.toLocaleString()}</span>}
           </div>
@@ -259,10 +259,10 @@ export function MatchDetail() {
           {tab === 'venue' && (
             <div className="grid grid-2">
               <div className="card card-pad">
-                <h3>{venue.name}</h3>
+                <h3 className="row"><span className="venue-badge"><StadiumIcon size={18} /></span>{venue.name}</h3>
                 <div className="info-list">
                   <div><span>📍</span><span>{venue.address}</span></div>
-                  <div><span>🏟️</span><span>Capacity {venue.capacity.toLocaleString()} · {venue.surface}</span></div>
+                  <div><span className="venue-ico"><StadiumIcon size={16} /></span><span>Capacity {venue.capacity.toLocaleString()} · {venue.surface}</span></div>
                   <div><span>🚇</span><span>{venue.transit}</span></div>
                   <div><span>🅿️</span><span>{venue.parking}</span></div>
                   <div><span>🕒</span><span>Gates open 90 minutes before kickoff ({fmtTime(new Date(new Date(m.kickoff).getTime() - 90 * 6e4).toISOString())})</span></div>

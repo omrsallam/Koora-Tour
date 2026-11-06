@@ -752,3 +752,17 @@ button, .btn, .chip, .tabs, .nav, .rail, .story, .match-card, .fixture, .video-c
   .story-feature .story-disc .avatar { width: 44px !important; height: 44px !important; }
   .story-word { font-size: .92rem; }
 }
+
+/* ---------- Stadium icon for venues ---------- */
+.stadium-icon { flex-shrink: 0; display: inline-block; vertical-align: -2px; }
+.venue-badge { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; display: inline-grid; place-items: center; background: rgba(28, 196, 191, .14); color: var(--turq-deep); }
+.venue-badge-dark { background: rgba(28, 196, 191, .2); color: var(--turq-2); }
+.search-result .venue-badge { width: 28px; height: 28px; margin-left: -2px; }
+.venue-inline { display: inline-flex; align-items: center; gap: 5px; }
+.venue-ico { color: var(--turq-deep); display: inline-flex; padding-top: 2px; }
+.match-card-venue { display: flex; align-items: center; gap: 6px; }
+.match-card-venue .stadium-icon { color: var(--turq-deep); }
+.match-card-dark .match-card-venue .stadium-icon, .muted-light .stadium-icon, .bracket-match .stadium-icon { color: var(--turq-2); }
+.fixture .meta .venue-inline { justify-content: flex-end; }
+.fixture .meta .stadium-icon { color: var(--turq-deep); }
+@media (max-width: 720px) { .fixture .meta .venue-inline { justify-content: center; } }

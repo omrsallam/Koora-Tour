@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useStore, useLookup } from '../store/store';
-import { Crest, Jersey, FormBadge, Empty, MatchCard, Avatar } from '../components/ui';
+import { Crest, Jersey, FormBadge, Empty, MatchCard, Avatar, StadiumIcon } from '../components/ui';
 import { C } from '../theme';
 import { PageHead } from '../components/blocks';
 import { standings, teamMatches, teamSeasonStats, playerTotals } from '../data/derive';
@@ -113,7 +113,7 @@ export function TeamDetail() {
                   {topAssist && <div className="row-between" style={{ marginTop: 8 }}><span className="muted small">Most assists</span><Link to={`/players/${topAssist.id}`} className="player-link">{topAssist.name} ({totals.get(topAssist.id)!.assists})</Link></div>}
                 </div>
                 <div className="card card-pad">
-                  <h3>Home ground</h3>
+                  <h3 className="row"><span className="venue-badge"><StadiumIcon size={18} /></span>Home ground</h3>
                   <b>{venue.name}</b>
                   <div className="muted small">{venue.address}</div>
                   <div className="muted small">Capacity {venue.capacity.toLocaleString()}</div>

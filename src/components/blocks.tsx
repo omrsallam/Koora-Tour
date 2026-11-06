@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Match, Team } from '../types';
 import { useLookup, useStore } from '../store/store';
 import { standings, score, hasScore, leaders, type LeaderKey, resolveSlot } from '../data/derive';
-import { Crest, FormBadge, Avatar } from './ui';
+import { Crest, FormBadge, Avatar, StadiumIcon } from './ui';
 import { G } from '../theme';
 import { fmtTime, roundLabel } from '../format';
 
@@ -126,7 +126,7 @@ export function FixtureRow({ m }: { m: Match }) {
       </div>
       <div className="side"><Crest team={away} label={m.awayLabel} size={30} /><span className="nm-full">{nameOf(away, m.awayLabel)}</span><span className="nm-short">{away?.short ?? m.awayLabel}</span></div>
       <div className="meta">
-        {L.venue(m.venueId)?.name}<br />
+        <span className="venue-inline"><StadiumIcon size={13} />{L.venue(m.venueId)?.name}</span><br />
         {projected ? <span className="pill pill-gold">Projected</span> : roundLabel(m.stage, m.round)}
       </div>
     </Link>
@@ -149,14 +149,14 @@ export function Bracket() {
       <div className="bracket-col">
         {sfs.map((m, i) => (
           <Link to={`/matches/${m.id}`} className="bracket-match" key={m.id}>
-            <div className="lbl"><span>Semi-final {i + 1}</span><span>{L.venue(m.venueId)?.name}</span></div>
+            <div className="lbl"><span>Semi-final {i + 1}</span><span className="venue-inline"><StadiumIcon size={12} />{L.venue(m.venueId)?.name}</span></div>
             {side(m, 'home')}{side(m, 'away')}
           </Link>
         ))}
       </div>
       {fin && (
         <Link to={`/matches/${fin.id}`} className="bracket-match bracket-final">
-          <div className="lbl"><span>🏆 The Final</span><span>{L.venue(fin.venueId)?.name}</span></div>
+          <div className="lbl"><span>🏆 The Final</span><span className="venue-inline"><StadiumIcon size={12} />{L.venue(fin.venueId)?.name}</span></div>
           <div className="tm">Winner SF1</div><div className="tm">Winner SF2</div>
         </Link>
       )}

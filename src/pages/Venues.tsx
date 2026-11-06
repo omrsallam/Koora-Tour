@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useStore, useLookup } from '../store/store';
 import { PageHead } from '../components/blocks';
-import { Crest } from '../components/ui';
+import { Crest, StadiumIcon } from '../components/ui';
 import { fmtDateTime, mapsEmbed, mapsUrl } from '../format';
 
 export default function Venues() {
@@ -20,7 +20,7 @@ export default function Venues() {
                 <div className="venue-top">
                   <div className="row-between">
                     <div>
-                      <h3 style={{ margin: 0 }}>{v.name}</h3>
+                      <h3 className="row" style={{ margin: 0 }}><span className="venue-badge venue-badge-dark"><StadiumIcon size={18} /></span>{v.name}</h3>
                       <div className="muted-light small">{v.city} · {v.capacity.toLocaleString()} seats</div>
                     </div>
                     <div className="row">{tenants.map((t) => <Crest key={t.id} team={t} size={34} />)}</div>
