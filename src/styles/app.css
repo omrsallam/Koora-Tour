@@ -539,9 +539,21 @@ ul.plain { list-style: none; margin: 0; padding: 0; }
 .stories-section { position: relative; padding: 30px 0 56px; background: linear-gradient(var(--blue-night), rgba(4, 11, 56, 0) 160px); }
 .stories { display: flex; gap: 18px; overflow-x: auto; padding: 4px 2px 18px; scrollbar-width: none; scroll-snap-type: x mandatory; }
 .stories::-webkit-scrollbar { display: none; }
-.story { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: 0; color: #fff; padding: 0; scroll-snap-align: start; }
-.story-ring { width: 88px; height: 88px; border-radius: 50%; padding: 3px; background: conic-gradient(var(--turq), var(--blue-2), var(--red), var(--turq)); display: block; transition: transform .15s; }
-.story:hover .story-ring { transform: scale(1.06); }
+.story { overflow: visible; flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: 0; color: #fff; padding: 0; scroll-snap-align: start; }
+.story-ring { position: relative; width: 88px; height: 88px; border-radius: 50%; padding: 3px; display: block; transition: transform .35s cubic-bezier(.22,.8,.24,1), box-shadow .35s; isolation: isolate; }
+/* UCL-style animated story ring: the colour band spins around each circle. */
+.story-ring::before { content: ''; position: absolute; inset: 0; border-radius: 50%; z-index: -1; background: conic-gradient(var(--turq), var(--blue-2), var(--red), var(--turq)); animation: ring-spin 6s linear infinite; }
+.rail-item:nth-child(even) .story-ring::before { animation-duration: 7.5s; animation-direction: reverse; }
+.story:hover .story-ring { transform: scale(1.08); }
+/* Spotlight travels from circle to circle in sequence. */
+.story.is-spot .story-ring { transform: scale(1.1); box-shadow: 0 0 22px 2px rgba(28, 196, 191, .55); }
+.story.is-spot .story-ring::before { animation-duration: 1.6s; }
+.story.is-spot .story-label { color: var(--turq-2); }
+.story { animation: story-in .55s cubic-bezier(.22,.8,.24,1) both; }
+.story-label { transition: color .35s; }
+@keyframes ring-spin { to { transform: rotate(1turn); } }
+@keyframes story-in { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+@media (prefers-reduced-motion: reduce) { .story, .story-ring::before { animation: none !important; } }
 .story-disc { width: 100%; height: 100%; border-radius: 50%; background: var(--blue-deep); border: 3px solid var(--blue-night); display: flex; align-items: center; justify-content: center; gap: 2px; }
 .story-label { font-size: .74rem; font-weight: 700; text-align: center; letter-spacing: .01em; white-space: nowrap; }
 .feature-grid { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 24px; margin-top: 14px; }
@@ -676,7 +688,7 @@ ul.plain { list-style: none; margin: 0; padding: 0; }
 
 /* ---------- AutoRail: rows that slide in sequence when they don't fit ---------- */
 .rail { position: relative; --rail-gap: 16px; }
-.rail-viewport { overflow: hidden; padding: 4px 2px 6px; margin: -4px -2px -6px; }
+.rail-viewport { overflow: hidden; padding: 16px 16px; margin: -16px -16px; }
 .rail-track { display: flex; gap: var(--rail-gap); will-change: transform; }
 .rail-item { flex: 0 0 auto; min-width: 0; }
 .rail-item > * { height: 100%; }

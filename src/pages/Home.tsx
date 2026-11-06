@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, useLookup, dashboardPath } from '../store/store';
 import { Crest, MatchCard, SectionHead, Countdown, FormBadge, Star8 } from '../components/ui';
@@ -77,6 +78,14 @@ function YourClub() {
 function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
   const { db } = useStore();
   const L = useLookup();
+  // UCL-style "stories": a spotlight travels from circle to circle in sequence.
+  const [spot, setSpot] = useState(0);
+  const [spotPaused, setSpotPaused] = useState(false);
+  useEffect(() => {
+    if (spotPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = window.setInterval(() => setSpot((i) => i + 1), 1700);
+    return () => window.clearInterval(t);
+  }, [spotPaused]);
   // Only the most recent matchday's results.
   const lastRound = Math.max(0, ...db.matches.filter((m) => m.stage === 'league' && m.status === 'finished').map((m) => m.round));
   const finished = db.matches.filter((m) => m.stage === 'league' && m.round === lastRound && m.status === 'finished').sort((a, b) => a.kickoff.localeCompare(b.kickoff));
@@ -86,8 +95,9 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
     <div className="stories-section">
       <div className="container">
         {lastRound > 0 && <div className="stories-head"><span className="kicker" style={{ margin: 0 }}>Matchday {lastRound} · results</span><Link to="/matches" className="link-btn on-dark">All matches →</Link></div>}
+        <div onMouseEnter={() => setSpotPaused(true)} onMouseLeave={() => setSpotPaused(false)} onFocusCapture={() => setSpotPaused(true)} onBlurCapture={() => setSpotPaused(false)}>
         <AutoRail label={`Matchday ${lastRound} results`} tone="dark" interval={2600}>
-          {finished.map((m) => {
+          {finished.map((m, idx) => {
             const [h, a] = score(m);
             const hl = db.highlights.find((x) => x.matchId === m.id);
             const home = L.team(m.homeId); const away = L.team(m.awayId);
@@ -98,11 +108,14 @@ function MatchdayStories({ onOpen }: { onOpen: (h: Highlight) => void }) {
                 <span className="story-label">{label}{hl && <span aria-hidden="true"> ▶</span>}</span>
               </>
             );
+            const cls = `story ${finished.length && idx === spot % finished.length ? 'is-spot' : ''}`;
+            const delay = { animationDelay: `${idx * 90}ms` };
             return hl
-              ? <button key={m.id} className="story" onClick={() => onOpen(hl)} aria-label={`Watch ${label} highlights`}>{inner}</button>
-              : <Link key={m.id} className="story" to={`/matches/${m.id}`}>{inner}</Link>;
+              ? <button key={m.id} className={cls} style={delay} onClick={() => onOpen(hl)} aria-label={`Watch ${label} highlights`}>{inner}</button>
+              : <Link key={m.id} className={cls} style={delay} to={`/matches/${m.id}`}>{inner}</Link>;
           })}
         </AutoRail>
+        </div>
         <div className="feature-grid">
           {featured && (
             <button className="feature-card" onClick={() => onOpen(featured)}>

@@ -5,10 +5,18 @@ import { Children, useCallback, useEffect, useLayoutEffect, useRef, useState, ty
  *
  * - Everything fits → a normal static row, nothing moves.
  * - Some boxes are hidden → the row slides one box at a time in a loop, with prev/next arrows,
- *   swipe on touch screens, edge fades, and progress dots.
+ *   swipe on touch screens, an edge fade and progress dots.
  * - Pauses while hovered, focused or touched, and while the tab is hidden.
  * - With "reduce motion" turned on it never moves by itself; arrows and swipe still work.
+ *
+ * Movement is applied straight to the track's style (not through React state) so that every
+ * click starts instantly from wherever the row currently is — even mid-slide — and clicking
+ * fast never queues up, lags or jumps.
  */
+const EASE = 'cubic-bezier(.22,.8,.24,1)';
+const AUTO_MS = 700;   // autoplay slide
+const CLICK_MS = 340;  // arrow / swipe slide — snappier
+
 export default function AutoRail({
   children, interval = 3200, label, tone = 'light', itemWidth,
 }: { children: ReactNode; interval?: number; label: string; tone?: 'light' | 'dark'; itemWidth?: number }) {
@@ -16,13 +24,13 @@ export default function AutoRail({
   const n = items.length;
   const viewport = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
+  const pos = useRef(0); // index of the box at the left edge, 0 … 2n-1 (second half = duplicate set)
   const [overflow, setOverflow] = useState(false);
-  const [index, setIndex] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [animate, setAnimate] = useState(true);
+  const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const touchX = useRef<number | null>(null);
+  const resumeTimer = useRef<number>();
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -32,66 +40,88 @@ export default function AutoRail({
     return () => mq.removeEventListener('change', on);
   }, []);
 
+  const kids = () => (track.current?.children ?? []) as HTMLCollectionOf<HTMLElement>;
+  const offsetOf = (i: number) => {
+    const k = kids();
+    return k[i] && k[0] ? k[i].offsetLeft - k[0].offsetLeft : 0;
+  };
+  const setWidth = () => offsetOf(n); // start of the duplicate set
+
+  /** Move the track to `x` (px), optionally animated. */
+  const place = (x: number, ms: number) => {
+    const tr = track.current;
+    if (!tr) return;
+    tr.style.transition = ms ? `transform ${ms}ms ${EASE}` : 'none';
+    tr.style.transform = `translate3d(${-x}px,0,0)`;
+  };
+  const currentX = () => {
+    const tr = track.current;
+    if (!tr) return 0;
+    return -new DOMMatrix(getComputedStyle(tr).transform).m41;
+  };
+
   // Does one full set of boxes fit inside the viewport?
   const measure = useCallback(() => {
     const vp = viewport.current, tr = track.current;
     if (!vp || !tr || n === 0) return;
-    const kids = tr.children as HTMLCollectionOf<HTMLElement>;
-    const last = kids[n - 1];
+    const k = tr.children as HTMLCollectionOf<HTMLElement>;
+    const last = k[n - 1];
     if (!last) return;
-    const setWidth = last.offsetLeft + last.offsetWidth - kids[0].offsetLeft;
-    setOverflow(setWidth > vp.clientWidth + 2);
+    const w = last.offsetLeft + last.offsetWidth - k[0].offsetLeft;
+    setOverflow(w > vp.clientWidth + 2);
   }, [n]);
 
-  useLayoutEffect(() => { measure(); }, [measure, items.length]);
+  useLayoutEffect(() => { measure(); }, [measure]);
   useEffect(() => {
-    const ro = new ResizeObserver(measure);
+    const ro = new ResizeObserver(() => { measure(); place(offsetOf(pos.current), 0); });
     if (viewport.current) ro.observe(viewport.current);
     return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [measure]);
-  useEffect(() => { if (!overflow) { setAnimate(false); setIndex(0); } }, [overflow]);
-
-  // Translate so that box `index` sits at the left edge.
   useLayoutEffect(() => {
+    if (!overflow) { pos.current = 0; setActive(0); }
+    place(offsetOf(pos.current), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overflow]);
+
+  const step = useCallback((dir: 1 | -1, ms: number) => {
     const tr = track.current;
-    if (!tr) return;
-    const kid = tr.children[index] as HTMLElement | undefined;
-    setOffset(kid ? kid.offsetLeft - (tr.children[0] as HTMLElement).offsetLeft : 0);
-  }, [index, overflow]);
+    if (!tr || n === 0) return;
+    // Start from where the row actually is right now (it may be mid-slide).
+    let x = currentX();
+    let p = pos.current;
+    // Keep `p` inside the first set by hopping to the identical-looking duplicate, invisibly.
+    if (p >= n) { p -= n; x -= setWidth(); }
+    if (p + dir < 0) { p += n; x += setWidth(); }
+    place(x, 0);
+    void tr.offsetWidth; // commit the hop before animating
+    p += dir;
+    pos.current = p;
+    place(offsetOf(p), ms);
+    setActive(((p % n) + n) % n);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n]);
 
-  const step = useCallback((dir: 1 | -1) => {
-    if (dir === -1 && index === 0) {
-      // Jump (invisibly) to the duplicate set, then animate back one box.
-      setAnimate(false);
-      setIndex(n);
-      requestAnimationFrame(() => requestAnimationFrame(() => { setAnimate(true); setIndex(n - 1); }));
-      return;
-    }
-    setAnimate(true);
-    setIndex((i) => i + dir);
-  }, [index, n]);
+  const onTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || e.propertyName !== 'transform') return;
+    // Resting in the duplicate set → hop back to the identical first set.
+    if (pos.current >= n) { pos.current -= n; place(offsetOf(pos.current), 0); }
+  };
 
-  // Autoplay in sequence. The timer must not restart when the index changes (including the
-  // invisible snap back to the first set), otherwise the last box lingers longer than the others.
-  const stepRef = useRef(step);
-  stepRef.current = step;
+  // Autoplay in sequence.
   useEffect(() => {
     if (!overflow || paused || reduced) return;
-    const t = setInterval(() => { if (!document.hidden) stepRef.current(1); }, interval);
-    return () => clearInterval(t);
-  }, [overflow, paused, reduced, interval]);
+    const t = window.setInterval(() => { if (!document.hidden) step(1, AUTO_MS); }, interval);
+    return () => window.clearInterval(t);
+  }, [overflow, paused, reduced, interval, step]);
 
-  // After sliding into the duplicate set, snap back to the real one without animation.
-  const onTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
-    // Ignore transitions bubbling up from the boxes themselves (e.g. hover lift on a card).
-    if (e.target !== e.currentTarget || e.propertyName !== 'transform') return;
-    if (index >= n) { setAnimate(false); setIndex(index - n); }
+  const pauseFor = (ms: number) => {
+    setPaused(true);
+    window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => setPaused(false), ms);
   };
-  useEffect(() => {
-    if (!animate) { const r = requestAnimationFrame(() => setAnimate(true)); return () => cancelAnimationFrame(r); }
-  }, [animate]);
+  useEffect(() => () => window.clearTimeout(resumeTimer.current), []);
 
-  const active = ((index % n) + n) % n;
   const boxStyle = itemWidth ? { flex: `0 0 ${itemWidth}px`, width: itemWidth } : undefined;
 
   return (
@@ -100,28 +130,23 @@ export default function AutoRail({
       role="region"
       aria-roledescription="carousel"
       aria-label={label}
-      onMouseEnter={() => setPaused(true)}
+      onMouseEnter={() => { window.clearTimeout(resumeTimer.current); setPaused(true); }}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
-      onTouchStart={(e) => { setPaused(true); touchX.current = e.touches[0].clientX; }}
+      onTouchStart={(e) => { window.clearTimeout(resumeTimer.current); setPaused(true); touchX.current = e.touches[0].clientX; }}
       onTouchEnd={(e) => {
         const start = touchX.current;
         touchX.current = null;
         if (start !== null && overflow) {
           const dx = e.changedTouches[0].clientX - start;
-          if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1);
+          if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1, CLICK_MS);
         }
-        setTimeout(() => setPaused(false), 4000);
+        pauseFor(4000);
       }}
     >
       <div className="rail-viewport" ref={viewport}>
-        <div
-          className="rail-track"
-          ref={track}
-          style={{ transform: `translate3d(${-offset}px,0,0)`, transition: animate ? 'transform .7s cubic-bezier(.22,.8,.24,1)' : 'none' }}
-          onTransitionEnd={onTransitionEnd}
-        >
+        <div className="rail-track" ref={track} onTransitionEnd={onTransitionEnd}>
           {items.map((c, i) => <div className="rail-item" style={boxStyle} key={`a${i}`}>{c}</div>)}
           {overflow && items.map((c, i) => (
             // Duplicate set for a seamless loop — hidden from assistive tech and keyboard.
@@ -131,10 +156,10 @@ export default function AutoRail({
       </div>
       {overflow && (
         <>
-          <button className="rail-arrow rail-prev" onClick={() => step(-1)} aria-label="Previous">
+          <button className="rail-arrow rail-prev" onClick={() => step(-1, CLICK_MS)} aria-label="Previous">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
-          <button className="rail-arrow rail-next" onClick={() => step(1)} aria-label="Next">
+          <button className="rail-arrow rail-next" onClick={() => step(1, CLICK_MS)} aria-label="Next">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M9 5l7 7-7 7" /></svg>
           </button>
           <div className="rail-dots" aria-hidden="true">
